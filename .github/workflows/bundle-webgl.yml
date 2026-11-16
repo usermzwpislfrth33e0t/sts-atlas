@@ -1,0 +1,30 @@
+name: Bundle STS WebGL dependencies
+on:
+  push:
+    paths: [.github/workflows/bundle-webgl.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build self-contained 3D bundles with esbuild
+        run: |
+          npm install --no-save --ignore-scripts esbuild@0.25.12
+          npx esbuild stationyard-v1.js --bundle --minify --target=es2020 --format=esm --outfile=stationyard.bundle.js
+          npx esbuild shipyard-v7.js --bundle --minify --target=es2020 --format=esm --outfile=shipyard-v7.bundle.js
+          node --check stationyard.bundle.js
+          node --check shipyard-v7.bundle.js
+          ls -lh stationyard.bundle.js shipyard-v7.bundle.js
+          grep -q 'STATIONYARD' stationyard.bundle.js || true
+      - name: Persist local self-contained bundles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f stationyard.bundle.js shipyard-v7.bundle.js
+          if ! git diff --cached --quiet; then
+            git commit -m "Bundle WebGL station and vessel engines without runtime module dependencies"
+            git push origin HEAD:main
+          fi
