@@ -53,6 +53,14 @@ jobs:
               print('MOVED_BGM_BYTES',len(audio_bytes),'OLD_HTML_BYTES',last-pos,'NEW_HTML_BYTES',index.stat().st_size)
           else:
               print('BGM_ALREADY_EXTERNAL')
+          source=index.read_text(encoding='utf-8')
+          eager='src="./assets/sts-ambient.mp3"'
+          lazy='data-src="./assets/sts-ambient.mp3"'
+          if eager in source:
+              source=source.replace(eager,lazy,1)
+              index.write_text(source,encoding='utf-8')
+              print('BGM_AUDIO_SRC_DEFERRED')
+          assert lazy in index.read_text(encoding='utf-8')
           assert asset.is_file() and asset.stat().st_size>100_000
           assert original not in index.read_text(encoding='utf-8')
           PY
@@ -102,16 +110,18 @@ jobs:
               index.write_text(source, encoding='utf-8')
           assert station_js in source and station_css in source
           assert ref_css in source and ref_js in source
-          terminal_css='<link rel="stylesheet" href="./sts-terminal-v9.css?v=10.0">'
-          terminal_js='<script defer src="./sts-terminal-v9.js?v=10.0"></script>'
+          terminal_css='<link rel="stylesheet" href="./sts-terminal-v9.css?v=10.1">'
+          terminal_js='<script defer src="./sts-terminal-v9.js?v=10.1"></script>'
           if 'sts-terminal-v9.css' not in source:
               source=source.replace('</head>',terminal_css+'\n</head>',1)
           if 'sts-terminal-v9.js' not in source:
               source=source.replace('</body></html>',terminal_js+'\n</body></html>',1)
-          source=source.replace('sts-terminal-v9.css?v=9.0','sts-terminal-v9.css?v=10.0')
-          source=source.replace('sts-terminal-v9.js?v=9.0','sts-terminal-v9.js?v=10.0')
-          source=source.replace('sts-terminal-v9.css?v=9.1','sts-terminal-v9.css?v=10.0')
-          source=source.replace('sts-terminal-v9.js?v=9.1','sts-terminal-v9.js?v=10.0')
+          source=source.replace('sts-terminal-v9.css?v=9.0','sts-terminal-v9.css?v=10.1')
+          source=source.replace('sts-terminal-v9.js?v=9.0','sts-terminal-v9.js?v=10.1')
+          source=source.replace('sts-terminal-v9.css?v=9.1','sts-terminal-v9.css?v=10.1')
+          source=source.replace('sts-terminal-v9.js?v=9.1','sts-terminal-v9.js?v=10.1')
+          source=source.replace('sts-terminal-v9.css?v=10.0','sts-terminal-v9.css?v=10.1')
+          source=source.replace('sts-terminal-v9.js?v=10.0','sts-terminal-v9.js?v=10.1')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           assert terminal_css in source and terminal_js in source
