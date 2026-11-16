@@ -180,7 +180,7 @@ ui('sts11Pause').addEventListener('click',()=>{
 const AU_KM=149597870.7;
 const regionAU={Earth:1,Luna:1.003,Mars:1.52,Belt:2.7,Helio:2.2,Jupiter:5.2,Saturn:9.54};
 function distanceKm(from,to){
- if(from.region===to.region)return Math.max(12000,length(sub(from.xyz,to.xyz))*12000);
+ if(from.region===to.region)return Math.max(12000,length(sub(from.xyz,to.xyz))/U*12000);
  const pair=[from.region,to.region];
  if(pair.includes('Earth')&&pair.includes('Luna'))return 384400;
  if(pair.includes('Mars')&&pair.includes('Earth'))return 78000000;
@@ -192,14 +192,14 @@ function hoursForLeg(a,b,mode,vessel){
  const pair=[a.region,b.region],days=mode==='fusion'
   ?(pair.includes('Saturn')?128:pair.includes('Jupiter')?86:pair.includes('Belt')?57:pair.includes('Mars')?43:pair.includes('Luna')?1.1:0.65)
   :(pair.includes('Saturn')?205:pair.includes('Jupiter')?130:pair.includes('Belt')?72:pair.includes('Mars')?125:pair.includes('Luna')?2.8:1.5);
- if(a.region===b.region)return clamp(12+length(sub(a.xyz,b.xyz))*1.3,12,100)*shipInfo[vessel].time;
+ if(a.region===b.region)return clamp(12+length(sub(a.xyz,b.xyz))/U*1.3,12,100)*shipInfo[vessel].time;
  return days*24*shipInfo[vessel].time;
 }
 function pathFromPoints(from,to,mode){
  const route=mode==='sail'?routes.find(r=>r.from===from.id&&r.to===to.id||r.from===to.id&&r.to===from.id):null;
  if(route?.points?.length){const points=route.from===from.id?route.points:route.points.slice().reverse();return points.map(p=>p.slice())}
  const a=from.xyz,b=to.xyz,d=sub(b,a);
- const bend=mode==='fusion'?clamp(length(d)*.045,.15,5):clamp(length(d)*.09,.12,4);
+ const bend=mode==='fusion'?clamp(length(d)*.045,.15*U,5*U):clamp(length(d)*.09,.12*U,4*U);
  const off=unit(cross(unit(d),[0,1,0]));const pp=[];
  for(let i=0;i<=80;i++){const t=i/80;pp.push(vec(interp(a,b,t),mul(off,bend*Math.sin(Math.PI*t))))}
  return pp;
@@ -222,14 +222,14 @@ function profileVelocity(t){
 }
 function phaseAt(t){
  if(t>=.999)return 'ARRIVAL';
- if(t>.80)return 'DECELERATION';
- if(t>.735)return 'BRAKE FLIP';
+ if(t>.75)return 'DECELERATION';
+ if(t>.68)return 'BRAKE FLIP';
  if(t<.23)return 'ACCELERATION';
  return 'MIDCOURSE COAST';
 }
 function transmitter(shipPos,routeLeg,elapsed,atlas){
  const active=sources.map(st=>({st,d:length(sub(st.xyz,shipPos)),power:st.electric_GWe||.4}))
- .filter(x=>x.d<30).sort((a,b)=>{
+ .filter(x=>x.d<30*U).sort((a,b)=>{
    // Prefer large dedicated beam arrays and orbital power/relay stations.
    const score=x=>x.d/Math.pow(x.power,.23)+(x.st.type==='ARRAY'?-3:x.st.type==='POWER'?-2.1:x.st.type==='RELAY'?-1.0:1);
    return score(a)-score(b);
@@ -288,17 +288,20 @@ Atlas.prototype.updateJourney=function(dt){
   j.leg=legNo;this.highlightJourneyLeg(legNo);
   this.onTransfer({leg:legNo,preset:j.preset,from:leg.from,to:leg.to,phase:'depart',route:this.currentJourneyRoute()});
   this.camera.destTarget=interp(leg.from.xyz,leg.to.xyz,.5);
-  this.camera.destDist=clamp(length(sub(leg.to.xyz,leg.from.xyz))*2.3,13,75);
+  this.camera.destDist=clamp(length(sub(leg.to.xyz,leg.from.xyz))*2.3,13*U,75*U);
  }
  const p=profilePosition(local),a=sample(leg.points,clamp(p-.004,0,1)),b=sample(leg.points,clamp(p+.004,0,1));
  this.shipPos=sample(leg.points,p);
  this.shipDir=unit(sub(b,a));
  if(state.follow){
-   this.camera.destTarget=interp(this.camera.destTarget,this.shipPos,clamp(dt*3.5,0,1));
-   this.camera.destDist=clamp(Math.max(14,Math.min(this.width,this.height)*.037),11,26);
+   // Track the ship in scaled space; keep the camera outside enlarged planets.
+   const k=clamp(dt*(this.speed>5?17:10),0,1);
+   this.camera.destTarget=this.shipPos.slice();
+   this.camera.target=interp(this.camera.target,this.shipPos,k);
+   this.camera.destDist=15*U;
  }
  const phase=phaseAt(local);state.phase=phase;
- this.shipFlipAngle=local<=.735?0:local<.80?(local-.735)/.065*Math.PI:Math.PI;
+ this.shipFlipAngle=local<=.68?0:local<.75?(local-.68)/.07*Math.PI:Math.PI;
  const instantKmS=leg.distanceKm/leg.durationSec*profileVelocity(local);
  j.currentSpeed=instantKmS;
  if(j.preset.mode==='sail'){
