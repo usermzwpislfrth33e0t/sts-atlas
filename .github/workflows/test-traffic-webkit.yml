@@ -1,7 +1,7 @@
 name: Verify STS V11 iPhone Safari WebKit
 on:
   push:
-    paths: [.github/workflows/test-traffic-webkit.yml]
+    paths: [.github/workflows/test-traffic-webkit.yml, sts-traffic-v11.js, stationyard-v1.js, shipyard-v7.js]
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,7 +25,7 @@ jobs:
             const p=await context.newPage();const errors=[],bad=[];
             p.on('pageerror',e=>errors.push(e.stack||e.message));
             p.on('response',r=>{if(r.status()>=400)bad.push(r.status()+' '+r.url())});
-            await p.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-11.0',{waitUntil:'domcontentloaded',timeout:55000});
+            await p.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-12.0',{waitUntil:'domcontentloaded',timeout:55000});
             await p.waitForFunction(()=>window.STS_TRAFFIC_V11_READY&&window.STS_SHIPYARD_EXPORT_MODEL&&window.STS_STATIONYARD_EXPORT_MODEL&&window.STS_GET_ATLAS?.(),{timeout:35000});
             await p.locator('#openJourneyBtn').tap();
             await p.locator('[data-vessel="clipper"]').tap();
