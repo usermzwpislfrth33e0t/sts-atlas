@@ -1,0 +1,27 @@
+name: Inspect STS Portal and Boot Hooks
+on:
+  push:
+    paths: [.github/workflows/inspect-portal-next.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract portal markup and boot handlers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          print('SIZE',len(s),'LINES',len(s.splitlines()))
+          for needle in ['id="portal"','id="boot"','id="app"','portal-title','portal-kr','portal-enter','boot-title','boot-fill','bootProgress','bootText','bootSkip','portalBtn','enterBtn','skipBtn','skipBoot','bootReady','brandBtn','portal','boot','access granted','ACCESS GRANTED','setInterval(','requestAnimationFrame(','initApp','goHome','go(view','go(page','function navigate']:
+            found=[m.start() for m in re.finditer(re.escape(needle),s,re.I)]
+            print('MATCH',repr(needle),'COUNT',len(found),'AT',found[:12])
+            for p in found[:5]:
+              print('EXCERPT',repr(needle),p,repr(s[max(0,p-280):p+1050]))
+          print('FIRST_HTML',repr(s[:1700]))
+          print('LAST_HTML',repr(s[-4500:]))
+          PY
