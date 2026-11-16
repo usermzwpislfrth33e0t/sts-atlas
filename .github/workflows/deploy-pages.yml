@@ -122,6 +122,13 @@ jobs:
           source=source.replace('sts-terminal-v9.js?v=9.1','sts-terminal-v9.js?v=10.1')
           source=source.replace('sts-terminal-v9.css?v=10.0','sts-terminal-v9.css?v=10.1')
           source=source.replace('sts-terminal-v9.js?v=10.0','sts-terminal-v9.js?v=10.1')
+          # The original 2-second boot completion must not race the terminal
+          # V10 sequence. Keep the old timer as a fallback if V10 is absent.
+          timer='bootTimers.push(setTimeout(finishEntry,2020))'
+          guarded="if(!document.documentElement.classList.contains('sts10-terminal'))bootTimers.push(setTimeout(finishEntry,2020))"
+          if timer in source and guarded not in source:
+              source=source.replace(timer,guarded,1)
+          assert guarded in source
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           assert terminal_css in source and terminal_js in source
