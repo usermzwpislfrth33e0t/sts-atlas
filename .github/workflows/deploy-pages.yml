@@ -1,4 +1,4 @@
-name: Deploy STS V4 to GitHub Pages
+name: Deploy STS Navigation Atlas
 
 on:
   push:
@@ -25,6 +25,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Attach shipyard V5 design module
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          index = Path('index.html')
+          source = index.read_text(encoding='utf-8')
+          if 'shipyard-v5.js' not in source:
+              source = source.replace('</head>', '<link rel="stylesheet" href="./shipyard-v5.css?v=5.1"></head>', 1)
+              source = source.replace('</body></html>', '<script src="./shipyard-v5.js?v=5.1"></script></body></html>', 1)
+              index.write_text(source, encoding='utf-8')
+          PY
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
         with:
