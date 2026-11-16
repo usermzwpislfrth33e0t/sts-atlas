@@ -39,8 +39,12 @@ jobs:
             });
             console.log('SAFARI_BGM',JSON.stringify(audio));
             if(audio.error||audio.paused||audio.readyState<2||audio.time<=.05||audio.button!=='ON')throw Error('BGM_SAFARI_PLAYBACK_FAILURE '+JSON.stringify(audio));
-            await p.locator('#bgmBtn').tap();
-
+            // WebKit touch emulation can block on a second touch while audio
+            // output is active; sound playback itself has already been tested.
+            await p.evaluate(()=>document.getElementById('bgmBtn').click());
+            const off=await p.evaluate(()=>({paused:document.getElementById('bgm').paused,label:document.getElementById('bgmState').textContent}));
+            console.log('SAFARI_BGM_OFF',JSON.stringify(off));
+            if(!off.paused||off.label!=='OFF')throw Error('BGM_STOP_FAILED');
             await p.locator('#openJourneyBtn').tap();
             await p.locator('[data-vessel="clipper"]').tap();
             await p.locator('#journeyStart').tap();
