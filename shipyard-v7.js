@@ -210,6 +210,20 @@ function buildTug(){
  return {arms:[1.65,1.2,3.98],bus:[.7,1.0,1.35],payload:[-1,-.75,-1.25],thrusters:[.7,-.2,-3.4]};
 }
 const builders={freighter:buildFreighter,clipper:buildClipper,fusion:buildFusion,tug:buildTug};
+/* Navigation Atlas / share the SAME procedural geometry as the engineering viewer.
+   This is a detached group: selecting a map ship does not disturb the active
+   shipyard camera, selected part or WebGL canvas. */
+window.STS_SHIPYARD_EXPORT_MODEL=(id)=>{
+ if(!builders[id])return null;
+ const previousRoot=root,previousGroups=groups;
+ try{
+  root=new THREE.Group();groups={};
+  builders[id]();
+  root.updateMatrixWorld(true);
+  return root;
+ }finally{root=previousRoot;groups=previousGroups;}
+};
+
 const state={yaw:-.58,pitch:.32,dist:23,targetDist:23,auto:!matchMedia('(prefers-reduced-motion: reduce)').matches,explode:false,wire:false,drag:new Map(),touchPinch:0,w:0,h:0,dirty:true};
 const raycaster=new THREE.Raycaster(),pointerNdc=new THREE.Vector2();
 function recolor(){
