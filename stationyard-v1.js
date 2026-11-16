@@ -407,7 +407,7 @@ if(inspector&&detailID){
    const nav=document.querySelector('[data-view="facilities"]');if(nav)nav.click();
    section.scrollIntoView({behavior:'smooth',block:'start'});
   });
-  inspector.appendChild(btn);
+  const summary=inspector.querySelector('.inspector-summary');if(summary)summary.insertAdjacentElement('afterend',btn);else inspector.prepend(btn);
  };
  new MutationObserver(attachInspectorAction).observe(inspector,{childList:true});
  attachInspectorAction();
