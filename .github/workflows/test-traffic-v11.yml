@@ -108,6 +108,39 @@ jobs:
               await page.waitForTimeout(350);const current=await page.evaluate(()=>window.STS_GET_ATLAS().activeJourney.elapsedSec);
               console.log('PAUSE_'+width,JSON.stringify({before:old,after:current}));
               if(current!==old)throw Error('Pause did not halt simulation time');
+              // Regression of user's reported M01 -> S11 144 km/s/128d
+              // runaway. Hohmann economy must be years, not months.
+              await page.locator('#journeyStop').click();
+              await page.locator('#stsFusionFrom').selectOption('M01');
+              await page.locator('#stsFusionTo').selectOption('S11');
+              await page.locator('#journeyStart').click();
+              await page.waitForTimeout(450);
+              const outer=await page.evaluate(()=>{
+                const atlas=window.STS_GET_ATLAS(),j=atlas.activeJourney,leg=j?.legs?.[0];
+                const p=leg?.points||[];
+                let curveLength=0,totalTurn=0,chord=0,violations=0;
+                const L=v=>Math.hypot(...v),diff=(a,b)=>a.map((x,k)=>x-b[k]);
+                for(let i=1;i<p.length;i++)curveLength+=L(diff(p[i],p[i-1]));
+                if(p.length>1)chord=L(diff(p[0],p[p.length-1]));
+                for(let i=2;i<p.length;i++){
+                  const a=diff(p[i-1],p[i-2]),b=diff(p[i],p[i-1]);
+                  const cos=a.reduce((q,x,k)=>q+x*b[k],0)/(L(a)*L(b)||1);
+                  totalTurn+=Math.acos(Math.max(-1,Math.min(1,cos)));
+                }
+                for(let i=1;i<p.length-1;i++)for(const body of window.STS3D.BODIES){
+                  if(!['STAR','PLANET'].includes(body.type)&&body.id!=='LUNA')continue;
+                  if(L(diff(p[i],body.xyz))<body.size*.98){violations++;break;}
+                }
+                return {days:leg?.durationSec/86400,dv:leg?.dvKmS,
+                  speed:j?.currentSpeed,waitDays:leg?.waitDays,
+                  plan:leg?.kind,ratio:curveLength/(chord||1),totalTurn,violations,
+                  mode:j?.preset.mode,points:p.length};
+              });
+              console.log('OUTER_MARS_SATURN_'+width,JSON.stringify(outer));
+              if(!outer.days||outer.days<1000||outer.speed>80||outer.dv>90||
+                 outer.ratio>4||outer.totalTurn>8||outer.violations||
+                 outer.mode!=='fusion'||outer.points<50)
+                  throw Error('MARS_SATURN_TRAJECTORY_INVALID '+JSON.stringify(outer));
               console.log('ERRORS_'+width,JSON.stringify(errors.concat(responses)));
               if(errors.length||responses.length)throw Error('Browser runtime errors');
               await page.close();
