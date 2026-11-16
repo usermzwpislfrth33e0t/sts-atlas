@@ -1,0 +1,25 @@
+name: Inspect station catalogue
+on:
+  push:
+    paths: [.github/workflows/inspect-stations.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Report station classifications and atlas extension points
+        run: |
+          python3 - <<'PY'
+          import re,collections
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          print('size',len(s))
+          for key in ['const STATIONS','STATIONS=','function buildStations','class Atlas3D','drawStation(st){','drawMesh(mesh,','const STATION_BY_ID','function go(view','function go(','id="facilitiesView"','id="vesselsView"','window.STS3D=','id="mapCanvas"','id="atlasView"']:
+            p=s.find(key)
+            print('KEY',repr(key),'POS',p,'SNIP',repr(s[p:p+(2300 if key in ['drawStation(st){','function go(view','function go(','const STATION_BY_ID'] else 700)]) if p>=0 else '')
+          for pattern in [r'type:\s*[\'"]([A-Z_]+)[\'"]',r'const STATIONS\s*=\s*(.{0,400})',r'\\bSTATIONS\\s*=\\s*(.{0,400})']:
+            print('PATTERN',pattern,'FREQUENCIES',collections.Counter(re.findall(pattern,s)).most_common(30))
+          PY
