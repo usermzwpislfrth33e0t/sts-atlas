@@ -62,6 +62,12 @@ jobs:
                 sender:document.getElementById('sts11BeamFrom').textContent
               }));
               console.log('SAIL_'+width,JSON.stringify(sail));
+              if(width===390){
+                const img=await page.screenshot({type:'jpeg',quality:56,animations:'disabled'});
+                const data=img.toString('base64');console.log('SCREENSHOT_START '+data.length);
+                for(let pos=0;pos<data.length;pos+=5000)console.log('SCREENSHOT_CHUNK '+pos+' '+data.slice(pos,pos+5000));
+                console.log('SCREENSHOT_END');
+              }
               if(!sail.diag.journey||sail.diag.vessel!=='clipper'||!sail.diag.shipModels.some(m=>m.id==='clipper'&&m.triangles>1000))
                 throw Error('Detailed clipper geometry not rendered');
               if(!sail.diag.source)throw Error('Sail is not receiving a visible beam transmitter');
