@@ -19,7 +19,7 @@ class Mesh{
  anchor(part,p){this.anchors[part]=p}
  box(p,dim,mat,part){const [x,y,z]=p,[w,h,d]=dim.map(n=>n/2),q=[v(x-w,y-h,z-d),v(x+w,y-h,z-d),v(x+w,y+h,z-d),v(x-w,y+h,z-d),v(x-w,y-h,z+d),v(x+w,y-h,z+d),v(x+w,y+h,z+d),v(x-w,y+h,z+d)];for(const face of [[0,3,2,1],[4,5,6,7],[0,4,7,3],[1,2,6,5],[3,7,6,2],[0,1,5,4]])this.quad(...face.map(i=>q[i]),mat,part)}
  tube(a,b,r,mat,part,sides=9){const t=norm(sub(b,a)),axis=Math.abs(t[1])<.85?v(0,1,0):v(1,0,0),u=norm(cross(t,axis)),w=norm(cross(t,u));const circle=(p,i)=>add(p,add(mul(u,Math.cos(i*TAU/sides)*r),mul(w,Math.sin(i*TAU/sides)*r)));for(let i=0;i<sides;i++){const p=circle(a,i),q=circle(a,i+1),r1=circle(b,i+1),s=circle(b,i);this.quad(p,q,r1,s,mat,part);this.tri(a,q,p,mat,part);this.tri(b,s,r1,mat,part)}}
- ring(center,r,t,plane,mat,part,segments=28){const n=Math.min(36,segments),sides=6,pt=(a,b)=>{const rr=r+Math.cos(b)*t,nn=Math.sin(b)*t;return plane==='xz'?v(Math.cos(a)*rr,center[1]+nn,Math.sin(a)*rr):plane==='yz'?v(center[0]+nn,Math.cos(a)*rr,Math.sin(a)*rr):v(Math.cos(a)*rr,Math.sin(a)*rr,center[2]+nn)};for(let i=0;i<n;i++){const a=i*TAU/n,b=(i+1)*TAU/n;for(let j=0;j<sides;j++){const c=j*TAU/sides,d=(j+1)*TAU/sides;this.quad(add(center,pt(a,c)),add(center,pt(b,c)),add(center,pt(b,d)),add(center,pt(a,d)),mat,part)}this.line(add(center,pt(a,0)),add(center,pt(b,0)),'light',part,.4)}} 
+ ring(center,r,t,plane,mat,part,segments=28){const n=Math.min(36,segments),sides=6,pt=(a,b)=>{const rr=r+Math.cos(b)*t,nn=Math.sin(b)*t;return plane==='xz'?v(Math.cos(a)*rr,nn,Math.sin(a)*rr):plane==='yz'?v(nn,Math.cos(a)*rr,Math.sin(a)*rr):v(Math.cos(a)*rr,Math.sin(a)*rr,nn)};for(let i=0;i<n;i++){const a=i*TAU/n,b=(i+1)*TAU/n;for(let j=0;j<sides;j++){const c=j*TAU/sides,d=(j+1)*TAU/sides;this.quad(add(center,pt(a,c)),add(center,pt(b,c)),add(center,pt(b,d)),add(center,pt(a,d)),mat,part)}this.line(add(center,pt(a,0)),add(center,pt(b,0)),'light',part,.4)}} 
  taper(a,b,r0,r1,mat,part,sides=12){const t=norm(sub(b,a)),ax=Math.abs(t[1])<.88?v(0,1,0):v(1,0,0),u=norm(cross(t,ax)),w=norm(cross(t,u));const pt=(p,r,i)=>add(p,add(mul(u,Math.cos(i*TAU/sides)*r),mul(w,Math.sin(i*TAU/sides)*r)));for(let i=0;i<sides;i++){this.quad(pt(a,r0,i),pt(a,r0,i+1),pt(b,r1,i+1),pt(b,r1,i),mat,part);this.tri(a,pt(a,r0,i),pt(a,r0,i+1),mat,part);this.tri(b,pt(b,r1,i+1),pt(b,r1,i),mat,part)}}
  pod(x,y,z,len,r,mat,part){this.taper(v(x,y,z-len*.5),v(x,y,z-len*.32),r*.65,r,mat,part,12);this.tube(v(x,y,z-len*.32),v(x,y,z+len*.36),r,mat,part,12);this.taper(v(x,y,z+len*.36),v(x,y,z+len*.55),r,.04,mat,part,12);for(let k=0;k<3;k++)this.ring(v(x,y,z-len*.2+k*len*.25),r+.011,.022,'xy',k===1?'gold':'steel',part,16)}
  radiator(side){const s=side;for(let k=0;k<2;k++){const y=s*(1.25+k*.19);this.tube(v(0,y,-4.2),v(0,y,3.5),.07,'steel','radiators',6)}for(let j=0;j<3;j++){const a=j*1.68-2.3,b=a+1.49;for(let i=0;i<5;i++){const x0=s*(1.3+i*.91),x1=s*(1.3+(i+1)*.91),z0=a,z1=b;const yy=s*.18+.028*Math.sin(j+i);this.quad(v(x0,yy,z0),v(x1,yy,z0),v(x1,yy,z1),v(x0,yy,z1),i%2?'heat':'shadow','radiators',.99);this.line(v(x0,yy+.02,z0),v(x1,yy+.02,z0),'steel','radiators',.65)}this.tube(v(s*1.22,s*.14,a),v(s*5.9,s*.14,a),.055,'metal','radiators',6)}for(let z of [-2.35,2.5])this.tube(v(s*.60,0,z),v(s*5.7,s*.14,z),.065,'steel','radiators',6)}
@@ -34,7 +34,7 @@ function modelTug(){const M=new Mesh();M.taper(v(0,0,-1.65),v(0,0,1.9),1.02,1.12
 const builders={freighter:modelFreighter,clipper:modelClipper,fusion:modelFusion,tug:modelTug};
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 host.classList.add('shipyard-view');
-host.innerHTML=`<div class="page-eyebrow micro accent">03 / VESSEL ARCHITECTURE · DESIGN STUDY 05</div><div class="generic-header"><h2>선박 설계<span>.</span></h2><button data-view="home">← INDEX</button></div><div class="shipyard-headline"><p>STS 항행망에 투입되는 선박의 구조 설계. 장식용 도형이 아니라 각 추진 방식에 따른 구조적 차이가 드러나도록 구성했습니다. 화면에서 선체를 돌리고 각 부위를 선택할 수 있습니다.</p><span class="shipyard-label">FOUR ENGINEERING CONCEPTS / <strong>2120</strong></span></div><div class="shipyard-console"><div class="shipyard-main"><nav class="shipyard-modelstrip" aria-label="선박 형식 선택">${models.map(m=>`<button type="button" class="shipyard-model" data-model="${m.id}" aria-pressed="${m.id==='freighter'}"><small>${m.number} / ${m.serial.split(' / ')[0]}</small><strong>${m.name}</strong></button>`).join('')}</nav><div class="shipyard-viewport" id="shipViewport"><canvas id="shipCanvas" aria-label="회전·확대 가능한 우주선 3차원 도면"></canvas><div class="shipyard-sensor"><span><i></i>STS / ENGINEERING VIEWPORT</span><b>DRAG TO ROTATE · PINCH / WHEEL TO ZOOM</b></div><span class="shipyard-watermark" id="shipRenderMode">MATERIAL / SHADED</span><span class="shipyard-coordinates" id="shipCoordinates">AZ 032° / EL 019°</span><span class="shipyard-axes">MODEL SPACE<br>X / Y / Z</span><div id="shipPins"></div></div><div class="shipyard-toolbar"><div class="shipyard-tools"><button type="button" class="shipyard-tool" id="shipRotate" aria-pressed="true">⟳ AUTO ROTATE</button><button type="button" class="shipyard-tool" id="shipExplode" aria-pressed="false">EXPLODED</button><button type="button" class="shipyard-tool" id="shipWire" aria-pressed="false">WIREFRAME</button><button type="button" class="shipyard-tool" id="shipReset">RESET</button><button type="button" class="shipyard-tool" id="shipPlus" aria-label="확대">＋</button><button type="button" class="shipyard-tool" id="shipMinus" aria-label="축소">－</button></div><span class="shipyard-readout">PROCEDURAL 3D / NO EXTERNAL ASSETS</span></div></div><aside class="shipyard-sidebar"><div class="shipyard-sidebar-top"><span class="shipyard-series" id="shipSeries"></span><h3 id="shipName"></h3><p id="shipDescription"></p></div><div class="shipyard-specs" id="shipSpecs"></div><div class="shipyard-parts" id="shipParts"></div><div class="shipyard-part-note"><b id="shipPartName">SYSTEM SELECTED</b><p id="shipPartDetail"></p></div></aside></div><div class="shipyard-fineprint"><span>DESIGN STUDY · 비확정 설계 시안 · 역사·함급·운용 제원은 추후 설정집과 대조</span><span>RENDER: PROCEDURAL GEOMETRY / 24 FPS CAP / TOUCH CONTROLS</span></div>`;
+host.innerHTML=`<div class="page-eyebrow micro accent">03 / VESSEL ARCHITECTURE · DESIGN STUDY 06</div><div class="generic-header"><h2>선박 설계<span>.</span></h2><button data-view="home">← INDEX</button></div><div class="shipyard-headline"><p>STS 항행망에 투입되는 선박의 구조 설계. 선박 형식별 구조를 살펴볼 수 있는 설계 뷰어입니다. 선체를 회전하거나 확대하고, 부품을 선택하면 해당 계통의 설명을 확인할 수 있습니다.</p><span class="shipyard-label">FOUR ENGINEERING CONCEPTS / <strong>2120</strong></span></div><div class="shipyard-console"><div class="shipyard-main"><nav class="shipyard-modelstrip" aria-label="선박 형식 선택">${models.map(m=>`<button type="button" class="shipyard-model" data-model="${m.id}" aria-pressed="${m.id==='freighter'}"><small>${m.number} / ${m.serial.split(' / ')[0]}</small><strong>${m.name}</strong></button>`).join('')}</nav><div class="shipyard-viewport" id="shipViewport"><canvas id="shipCanvas" aria-label="회전·확대 가능한 우주선 3차원 도면"></canvas><div class="shipyard-sensor"><span><i></i>STS / ENGINEERING VIEWPORT</span><b>DRAG TO ROTATE · PINCH / WHEEL TO ZOOM</b></div><span class="shipyard-watermark" id="shipRenderMode">MATERIAL / SHADED</span><span class="shipyard-coordinates" id="shipCoordinates">AZ 032° / EL 019°</span><span class="shipyard-axes">MODEL SPACE<br>X / Y / Z</span><div id="shipPins"></div></div><div class="shipyard-toolbar"><div class="shipyard-tools"><button type="button" class="shipyard-tool" id="shipRotate" aria-pressed="true">⟳ AUTO ROTATE</button><button type="button" class="shipyard-tool" id="shipExplode" aria-pressed="false">EXPLODED</button><button type="button" class="shipyard-tool" id="shipWire" aria-pressed="false">WIREFRAME</button><button type="button" class="shipyard-tool" id="shipReset">RESET</button><button type="button" class="shipyard-tool" id="shipPlus" aria-label="확대">＋</button><button type="button" class="shipyard-tool" id="shipMinus" aria-label="축소">－</button></div><span class="shipyard-readout">ENGINEERING STUDY / INTERACTIVE MODEL</span></div></div><aside class="shipyard-sidebar"><div class="shipyard-sidebar-top"><span class="shipyard-series" id="shipSeries"></span><h3 id="shipName"></h3><p id="shipDescription"></p></div><div class="shipyard-specs" id="shipSpecs"></div><div class="shipyard-parts" id="shipParts"></div><div class="shipyard-part-note"><b id="shipPartName">SYSTEM SELECTED</b><p id="shipPartDetail"></p></div></aside></div><div class="shipyard-fineprint"><span>DESIGN STUDY · 비확정 설계 시안 · 역사·함급·운용 제원은 추후 설정집과 대조</span><span>RENDER / INTERACTIVE · TOUCH & MOUSE</span></div>`;
 const $=s=>host.querySelector(s),$$=s=>[...host.querySelectorAll(s)],canvas=$('#shipCanvas'),vp=$('#shipViewport'),ctx=canvas.getContext('2d',{alpha:false});
 if(!ctx)return;
 const back=host.querySelector('.generic-header [data-view="home"]');if(back)back.addEventListener('click',()=>document.querySelector('#brandBtn')?.click());
@@ -45,14 +45,14 @@ function rotate(p){const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw),cp=Math.c
 function position(p,part){return rotate(add(p,expOffset(part)))}
 function screen(p){const depth=Math.max(.33,1-p[2]/29),sc=Math.min(state.w/17.8,state.h/14.8)*state.zoom/depth;return {x:state.w*.5+p[0]*sc,y:state.h*.52-p[1]*sc,z:p[2],sc}}
 function color(mat,shade=1,active=false){const src=material[mat]||material.metal,boost=active?1.27:1;return `rgb(${src.map(x=>clamp(Math.round(x*shade*boost),0,255)).join(',')})`}
-function paint(){const w=state.w,h=state.h;if(!w||!h)return;ctx.setTransform(state.dpr,0,0,state.dpr,0,0);ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(w*.50,h*.47,5,w*.5,h*.5,Math.max(w,h)*.75);bg.addColorStop(0,'#1a2c3d');bg.addColorStop(.48,'#101a25');bg.addColorStop(1,'#070c12');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);for(const s of stars){ctx.fillStyle=`rgba(165,198,223,${s.opacity})`;ctx.fillRect(s.x*w,s.y*h,s.size,s.size)}ctx.lineWidth=.6;ctx.strokeStyle='#6c9fbe18';for(let k=0;k<9;k++){const y=h*.16+k*h*.085;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}for(let k=0;k<13;k++){const x=k*w/12;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}const ringR=Math.min(w*.28,h*.45);ctx.strokeStyle='#8cb7d220';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(w/2,h*.52,ringR,ringR*.55,-.25,0,TAU);ctx.stroke();ctx.strokeStyle='#b9d6e615';ctx.beginPath();ctx.arc(w/2,h*.52,ringR*.7,0,TAU);ctx.stroke();
+function paint(){const w=state.w,h=state.h;if(!w||!h)return;ctx.setTransform(state.dpr,0,0,state.dpr,0,0);ctx.clearRect(0,0,w,h);const bg=ctx.createRadialGradient(w*.44,h*.39,10,w*.5,h*.5,Math.max(w,h)*.78);bg.addColorStop(0,'#172637');bg.addColorStop(.48,'#0c1520');bg.addColorStop(1,'#060b11');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);for(const s of stars){ctx.fillStyle=`rgba(165,198,223,${s.opacity})`;ctx.fillRect(s.x*w,s.y*h,s.size,s.size)}ctx.lineWidth=.6;ctx.strokeStyle='#6c9fbe10';for(let k=0;k<9;k++){const y=h*.16+k*h*.085;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}for(let k=0;k<13;k++){const x=k*w/12;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}ctx.strokeStyle='#b4d8ec19';ctx.lineWidth=.8;const cx=w*.5,cy=h*.52;for(const dx of [-1,1])for(const dy of [-1,1]){ctx.beginPath();ctx.moveTo(cx+dx*w*.36,cy+dy*h*.32);ctx.lineTo(cx+dx*(w*.36-16),cy+dy*h*.32);ctx.moveTo(cx+dx*w*.36,cy+dy*h*.32);ctx.lineTo(cx+dx*w*.36,cy+dy*(h*.32-16));ctx.stroke()}
  const mesh=state.mesh;if(!mesh)return;const items=[];for(const f of mesh.tris){const ps=f.pts.map(p=>position(p,f.part)),depth=(ps[0][2]+ps[1][2]+ps[2][2])/3;items.push({f,ps,depth})}items.sort((a,b)=>a.depth-b.depth);const light=norm([-.27,.51,1]);
- for(const it of items){const {f,ps}=it,screenPts=ps.map(screen);if(screenPts.some(q=>!Number.isFinite(q.x)))continue;const n=norm(cross(sub(ps[1],ps[0]),sub(ps[2],ps[0]))),d=Math.abs(n[0]*light[0]+n[1]*light[1]+n[2]*light[2]),rim=1-Math.abs(n[2]),shade=clamp(.56+d*.53+rim*.10,.38,1.25),hilite=state.active===f.part;ctx.globalAlpha=state.wire?.23:(f.alpha*(state.active&&!hilite?.58:1));ctx.fillStyle=state.wire?'#254154':color(f.mat,shade,hilite);ctx.beginPath();ctx.moveTo(screenPts[0].x,screenPts[0].y);ctx.lineTo(screenPts[1].x,screenPts[1].y);ctx.lineTo(screenPts[2].x,screenPts[2].y);ctx.closePath();ctx.fill();if(state.wire){ctx.strokeStyle=hilite?'#c5eaff':'#54758e';ctx.lineWidth=.6;ctx.stroke()}}
- ctx.globalAlpha=1;for(const l of mesh.lines){const a=screen(position(l.a,l.part)),b=screen(position(l.b,l.part));if(!Number.isFinite(a.x)||!Number.isFinite(b.x))continue;ctx.strokeStyle=color(l.mat,.93,state.active===l.part);ctx.lineWidth=clamp(l.width*state.zoom,.5,3);ctx.globalAlpha=state.active===l.part?1:.70;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}ctx.globalAlpha=1;
+ for(const it of items){const {f,ps}=it,screenPts=ps.map(screen);if(screenPts.some(q=>!Number.isFinite(q.x)))continue;const n=norm(cross(sub(ps[1],ps[0]),sub(ps[2],ps[0]))),d=Math.abs(n[0]*light[0]+n[1]*light[1]+n[2]*light[2]),rim=1-Math.abs(n[2]),shade=clamp(.56+d*.53+rim*.10,.38,1.25),hilite=state.active===f.part;ctx.globalAlpha=state.wire?.23:(f.alpha*(state.active&&!hilite?.97:1));ctx.fillStyle=state.wire?'#254154':color(f.mat,shade,hilite);ctx.beginPath();ctx.moveTo(screenPts[0].x,screenPts[0].y);ctx.lineTo(screenPts[1].x,screenPts[1].y);ctx.lineTo(screenPts[2].x,screenPts[2].y);ctx.closePath();ctx.fill();if(state.wire){ctx.strokeStyle=hilite?'#c5eaff':'#54758e';ctx.lineWidth=.6;ctx.stroke()}}
+ ctx.globalAlpha=1;for(const l of mesh.lines){const a=screen(position(l.a,l.part)),b=screen(position(l.b,l.part));if(!Number.isFinite(a.x)||!Number.isFinite(b.x))continue;ctx.strokeStyle=color(l.mat,.93,state.active===l.part);ctx.lineWidth=clamp(l.width*state.zoom,.5,3);ctx.globalAlpha=state.active===l.part?1:(state.wire?.86:.50);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}ctx.globalAlpha=1;
  const spots=$$('#shipPins .shipyard-pin');for(const s of spots){const point=mesh.anchors[s.dataset.part];if(!point){s.hidden=true;continue}const p=screen(position(point,s.dataset.part));s.hidden=p.x<20||p.x>w-20||p.y<20||p.y>h-20;s.style.left=`${p.x}px`;s.style.top=`${p.y}px`}
  const deg=rad=>((rad*180/Math.PI)%360+360)%360;$('#shipCoordinates').textContent=`AZ ${Math.round(deg(state.yaw)).toString().padStart(3,'0')}° / EL ${Math.round(deg(state.pitch)).toString().padStart(2,'0')}° / ZOOM ${state.zoom.toFixed(1)}×`;
 }
-function resize(){const r=vp.getBoundingClientRect();state.w=Math.max(260,Math.round(r.width));state.h=Math.max(240,Math.round(r.height));state.dpr=Math.min(window.devicePixelRatio||1,window.innerWidth<700?1.2:1.6);canvas.width=Math.round(state.w*state.dpr);canvas.height=Math.round(state.h*state.dpr);state.dirty=true}
+function resize(){const r=vp.getBoundingClientRect();state.w=Math.max(260,Math.round(r.width));state.h=Math.max(240,Math.round(r.height));state.dpr=Math.min(window.devicePixelRatio||1,window.innerWidth<700?1.0:1.35);canvas.width=Math.round(state.w*state.dpr);canvas.height=Math.round(state.h*state.dpr);state.dirty=true}
 const observer=new ResizeObserver(resize);observer.observe(vp);
 function selectPart(part){const m=models.find(m=>m.id===state.id);const p=m.parts.find(a=>a[0]===part)||m.parts[0];state.active=p[0];$$('.shipyard-part').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.part===part)));$$('.shipyard-pin').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.part===part)));$('#shipPartName').textContent=`${p[0].toUpperCase()} / ${p[1]}`;$('#shipPartDetail').textContent=p[2];state.dirty=true}
 function selectModel(id){const m=models.find(x=>x.id===id);if(!m)return;state.id=id;state.mesh=builders[id]();state.explodeT=state.explode?1:0;state.yaw=id==='fusion'?-.76:-.50;state.pitch=id==='fusion'?.53:.40;state.zoom=id==='fusion'?1.16:1.10;$$('.shipyard-model').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.model===id)));$('#shipSeries').textContent=m.number+' / '+m.serial;$('#shipName').textContent=m.name;$('#shipDescription').textContent=m.desc;$('#shipSpecs').innerHTML=[['ROLE',m.role],['PROPULSION',m.drive],['CONFIGURATION',m.assembly],['NETWORK USE',m.service]].map(x=>`<div><small>${x[0]}</small><strong>${escapeHtml(x[1])}</strong></div>`).join('');$('#shipParts').innerHTML=`<div class="shipyard-parts-title">SELECT A COMPONENT / ${m.parts.length} SYSTEMS</div>`+m.parts.map((p,i)=>`<button type="button" class="shipyard-part" data-part="${p[0]}" aria-pressed="false"><span><em>${String(i+1).padStart(2,'0')}</em>${escapeHtml(p[1])}</span></button>`).join('');$('#shipPins').innerHTML=m.parts.map((p,i)=>`<button class="shipyard-pin" type="button" data-part="${p[0]}" aria-label="${escapeHtml(p[1])} 선택" aria-pressed="false"></button>`).join('');$$('.shipyard-part, .shipyard-pin').forEach(b=>b.addEventListener('click',()=>selectPart(b.dataset.part)));selectPart(m.parts[0][0]);state.dirty=true}
@@ -67,22 +67,104 @@ vp.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;vp.se
 vp.addEventListener('pointermove',e=>{if(!state.drag.has(e.pointerId))return;const before=state.drag.get(e.pointerId);const now={x:e.clientX,y:e.clientY};state.drag.set(e.pointerId,now);if(state.drag.size===1){state.yaw+=((now.x-before.x)/Math.max(250,vp.clientWidth))*Math.PI*1.7;state.pitch=clamp(state.pitch+(now.y-before.y)/Math.max(250,vp.clientHeight)*Math.PI, -.96,1.16)}else if(state.drag.size===2){const others=[...state.drag.entries()].filter(([k])=>k!==e.pointerId);const d1=Math.hypot(before.x-others[0][1].x,before.y-others[0][1].y),d2=Math.hypot(now.x-others[0][1].x,now.y-others[0][1].y);if(d1>10)state.zoom=clamp(state.zoom*d2/d1,.55,2.45)}state.dirty=true});
 for(const n of ['pointerup','pointercancel','lostpointercapture'])vp.addEventListener(n,e=>{state.drag.delete(e.pointerId);if(!state.drag.size)vp.classList.remove('dragging')});
 vp.addEventListener('wheel',e=>{e.preventDefault();state.zoom=clamp(state.zoom*(e.deltaY>0?.91:1.09),.55,2.45);state.dirty=true},{passive:false});
-let lastFrame=0;function tick(t){requestAnimationFrame(tick);if(document.hidden||!host.classList.contains('active')||!state.mesh)return;if(t-lastFrame<40)return;const dt=Math.min((t-lastFrame)/1000,.08);lastFrame=t;if(state.auto){state.yaw+=dt*.11;state.dirty=true}const target=state.explode?1:0;if(Math.abs(target-state.explodeT)>.002){state.explodeT+=(target-state.explodeT)*Math.min(1,dt*7);state.dirty=true}if(!state.dirty)return;paint();state.dirty=false}
+let lastFrame=0;function tick(t){requestAnimationFrame(tick);if(document.hidden||!host.classList.contains('active')||!state.mesh)return;if(t-lastFrame<48)return;const dt=Math.min((t-lastFrame)/1000,.08);lastFrame=t;if(state.auto){state.yaw+=dt*.11;state.dirty=true}const target=state.explode?1:0;if(Math.abs(target-state.explodeT)>.002){state.explodeT+=(target-state.explodeT)*Math.min(1,dt*7);state.dirty=true}if(!state.dirty)return;paint();state.dirty=false}
 selectModel('freighter');resize();requestAnimationFrame(tick);
-// Shared navigation model: visually mirrors the articulated sail freighter rather than a flat cross.
-if(window.STS3D?.Atlas3D){window.STS3D.Atlas3D.prototype.drawShip=function(center,forward){
- const f=norm(forward),basisX=norm(cross([0,1,0],f)),baseX=Math.hypot(...basisX)>.01?basisX:v(1,0,0),baseY=norm(cross(f,baseX));
- const tilt=Math.sin((this.animClock||0)*1.1)*.11,x=norm(add(mul(baseX,Math.cos(tilt)),mul(baseY,Math.sin(tilt)))),y=norm(cross(f,x));
- const axes=[x,y,f],s=clamp(this.camera.dist/84,.34,1.55),at=(a,b,c)=>add(center,add(add(mul(x,a*s),mul(y,b*s)),mul(f,c*s)));
- const box=(p,size,col,alpha=1)=>this.drawMesh(this.box,p,size.map(k=>k*s),col,alpha,.82,axes);
- box(at(0,0,.22),[.15,.15,2.8],'#d9e4ee');box(at(0,0,1.18),[.36,.27,.32],'#e7f2f9');
- box(at(0,0,-.6),[.5,.38,.45],'#526e83');
- for(const a of [-1,1])for(const b of [-1,1]){
-  box(at(a*.66,b*.66,-.9),[1.26,1.26,.026],a*b>0?'#a4ccdf':'#c9dce8',.86);
-  box(at(a*.70,b*.70,-.94),[.04,.04,.15],'#e9f3fa');
-  box(at(a*.19,b*.19,.65),[.34,.27,.6],a*b>0?'#6c8aa2':'#809fb4');
- }
- box(at(0,0,-1),[2.55,.035,.04],'#d6e7f2');box(at(0,0,-1),[.035,2.55,.04],'#d6e7f2');
- for(const k of [-1,1]){box(at(k*.31,-.08,1.87),[.19,.18,.37],'#7998ac');box(at(k*.31,-.08,2.12),[.11,.1,.16],'#afdfff',.53)}
- };}
+// Atlas connection: model scale follows projected pixels rather than arbitrary world units.
+const Atlas3D=window.STS3D?.Atlas3D;
+if(Atlas3D){
+  const originalUpdate=Atlas3D.prototype.updateJourney;
+  Atlas3D.prototype.updateJourney=function(dt){
+    const before=this.shipPos&&this.shipPos.slice();
+    const result=originalUpdate.call(this,dt);
+    if(before&&this.shipPos){
+      const delta=sub(this.shipPos,before),speed=Math.hypot(...delta);
+      if(speed>0.000015){
+        const direction=norm(delta);
+        const prev=this._shipFacing||direction;
+        this._shipFacing=norm(add(mul(prev,.76),mul(direction,.24)));
+        this.shipDir=this._shipFacing.slice();
+      }
+    }else if(!this.shipPos){this._shipFacing=null}
+    return result;
+  };
+  Atlas3D.prototype.drawShip=function(center,forward){
+    if(!this.useWebGL||!this.basis||!center)return;
+    const projected=this.project(center,this.basis);if(!projected)return;
+    const f=norm(forward||[0,0,1]);
+    const up=Math.abs(f[1])>.94?v(1,0,0):v(0,1,0);
+    const x=norm(cross(up,f)),y=norm(cross(f,x)),axes=[x,y,f];
+    const apparent=clamp(Math.min(this.width,this.height)*.18,60,114);
+    const zScale=clamp(apparent/(Math.max(.02,projected.scale)*4.9),.08,95);
+    const p=(xx,yy,zz)=>add(center,add(add(mul(x,xx*zScale),mul(y,yy*zScale)),mul(f,zz*zScale)));
+    const box=(xx,yy,zz,dx,dy,dz,c,alpha=1)=>this.drawMesh(this.box,p(xx,yy,zz),[dx*zScale,dy*zScale,dz*zScale],c,alpha,.68,axes);
+    // Four independently shaded reflector quadrants, clear truss spine and loaded cargo racks.
+    for(const sign of [-1,1])for(const updown of [-1,1]){
+      box(sign*.78,updown*.78,-1.4,1.48,1.48,.035,sign===updown?'#d6ecf4':'#a5cbdc',.96);
+      box(sign*.78,updown*.78,-1.46,1.39,.024,.024,'#d6e7ee');
+      box(sign*.78,updown*.78,-1.46,.024,1.38,.024,'#d6e7ee');
+      box(sign*.53,updown*.53,-1.7,.075,.075,.35,'#acc8da');
+      box(sign*.35,updown*.35,.30,.34,.33,1.12,'#6d8595');
+    }
+    box(0,0,-1.40,3.08,.08,.09,'#d5e4eb');
+    box(0,0,-1.40,.08,3.08,.09,'#d5e4eb');
+    box(0,0,.20,.22,.22,3.5,'#e3e9e9');
+    box(0,0,2.24,.58,.53,.72,'#ecf1ef');
+    box(0,0,2.78,.30,.29,.58,'#91b0c4');
+    for(const xx of [-.4,.4])for(const yy of [-.31,.31])for(const zz of [0,.7,1.4]){
+      box(xx,yy,zz,.48,.4,.57,zz===.7?'#b5c4ca':'#879caa');
+    }
+    for(const xx of [-1,1]){box(xx*.36,-.23,2.62,.24,.20,.44,'#9cb5c7');box(xx*.36,-.23,2.88,.17,.15,.15,'#8ccfe8',.92)}
+  };
+  // This overlay remains readable when the atlas switches to its 2D fallback,
+  // when a planet occludes the WebGL model, or at solar-system camera distances.
+  const originalOverlay=Atlas3D.prototype.renderOverlay;
+  Atlas3D.prototype.renderOverlay=function(){
+    originalOverlay.call(this);
+    if(!this.shipPos||!this.basis)return;
+    const point=this.project(this.shipPos,this.basis);
+    if(!point||point.x<-110||point.x>this.width+110||point.y<-110||point.y>this.height+110)return;
+    const f=norm(this.shipDir||[0,0,1]);
+    const ahead=this.project(add(this.shipPos,mul(f,Math.max(.5,point.z*.016))),this.basis);
+    let angle=0;
+    if(ahead&&Math.hypot(ahead.x-point.x,ahead.y-point.y)>0.12){
+      angle=Math.atan2(ahead.x-point.x,-(ahead.y-point.y));
+    }else{
+      angle=this._shipLastAngle||0;
+    }
+    const previous=this._shipLastAngle;
+    if(Number.isFinite(previous)){
+      let diff=angle-previous;while(diff>Math.PI)diff-=TAU;while(diff<-Math.PI)diff+=TAU;
+      angle=previous+diff*.22;
+    }
+    this._shipLastAngle=angle;
+    const c=this.ctx;
+    const shipSize=clamp(Math.min(this.width,this.height)*.155,47,100);
+    const sc=shipSize/56;
+    c.save();c.translate(point.x,point.y);c.rotate(angle);c.scale(sc,sc);
+    c.shadowColor='#8fd5f7';c.shadowBlur=8;c.globalAlpha=.95;
+    const reflect=(sx,sy,light)=>{
+      c.beginPath();c.moveTo(sx*1.8,sy*1.8);c.lineTo(sx*29,sy*4.8);
+      c.quadraticCurveTo(sx*36,sy*26,sx*27,sy*29);
+      c.lineTo(sx*4.8,sy*29);c.closePath();
+      const g=c.createLinearGradient(sx*3,sy*3,sx*28,sy*28);
+      g.addColorStop(0,light?'#d7edf6':'#8fb4c8');
+      g.addColorStop(.52,light?'#edf6fb':'#aecad9');
+      g.addColorStop(1,light?'#88a9bd':'#577f98');
+      c.fillStyle=g;c.fill();c.strokeStyle='#cee8f6';c.lineWidth=.85;c.stroke();
+      c.beginPath();c.moveTo(sx*3,sy*3);c.lineTo(sx*29,sy*29);c.moveTo(sx*13,sy*6);
+      c.lineTo(sx*14,sy*28);c.moveTo(sx*6,sy*14);c.lineTo(sx*29,sy*14);
+      c.strokeStyle='#cfdfeb8a';c.lineWidth=.65;c.stroke();
+    };
+    reflect(-1,-1,true);reflect(1,-1,false);reflect(-1,1,false);reflect(1,1,true);
+    c.shadowBlur=0;c.fillStyle='#e5eff6';c.strokeStyle='#06121e';c.lineWidth=1;
+    c.fillRect(-2.7,-4.1,5.4,32);c.strokeRect(-2.7,-4.1,5.4,32);
+    for(const xx of [-8,8])for(const yy of [8,16,24]){
+      c.fillStyle='#819aab';c.fillRect(xx-4,yy-4,8,8);
+      c.strokeStyle='#d9e9f1';c.strokeRect(xx-4,yy-4,8,8);
+    }
+    c.fillStyle='#dce9f2';c.beginPath();c.moveTo(0,-12);c.lineTo(5,-3);c.lineTo(5,4);c.lineTo(-5,4);c.lineTo(-5,-3);c.closePath();c.fill();
+    c.fillStyle='#93dafa';c.fillRect(-2,29,4,3.5);
+    c.restore();
+  };
+}
 })();
