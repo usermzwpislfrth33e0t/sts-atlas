@@ -28,6 +28,7 @@ portal.innerHTML=[
  command('02','atlas','항행 지도','OPEN NAVIGATION ATLAS'),
  command('03','about','체계 개요','READ SYSTEM REFERENCE'),
  '</nav>',
+ '<a class="sts9-direct-link" href="./?direct=atlas&v=terminal-9.1">DIRECT ACCESS / SKIP STARTUP ↗</a>',
  '<p class="sts9-portal-note">시설·항로 기록은 축약된 개략 자료입니다. 지도는 실제 천체력과 비행 궤적을 계산하지 않습니다.</p>',
  '</div><aside class="sts9-scope" aria-label="항행망 도식">',
  '<div class="sts9-scope-top"><span>SCHEMATIC / TRAFFIC TOPOLOGY</span><span>FIG 001 — SOL</span></div>',
@@ -125,8 +126,17 @@ async function performSequence(token){
 function launch(mode){
  if(started||finished)return;started=true;destination=['home','atlas','about'].includes(mode)?mode:'home';bootToken++;
  boot.classList.add('sts9-boot-open');boot.setAttribute('aria-hidden','false');boot.style.pointerEvents='auto';
- nativeEnter.click(); // invokes the original site's audio and entry/routing orchestration
+ // Prepare the actual application immediately. The new diagnostic boot
+ // continues visually, but no longer races the legacy two-second timer.
+ try{
+   nativeEnter.click();
+   if(!app.classList.contains('ready'))nativeSkip.click();
+ }catch(error){
+   console.error('STS terminal entry handoff:',error);
+ }
  document.activeElement?.blur?.();
+ const token=bootToken;
+ setTimeout(()=>{if(started&&!finished&&bootToken===token)proceedToView()},7000);
  performSequence(bootToken);
 }
 portal.querySelectorAll('[data-sts9-destination]').forEach(btn=>{
@@ -221,4 +231,21 @@ requestAnimationFrame(renderLoop);
 window.STS_TERMINAL_V9_READY=true;
 window.STS_TERMINAL_V9_STATE={started:false,finished:false,destination:'home',phase:-1};
 window.STS_TERMINAL_V9_LAUNCH=launch;
+// A dedicated recovery URL skips visual startup and uses the original routing
+// API. It is useful when a mobile in-app browser stalls on heavy visual layers.
+const directMode=new URLSearchParams(location.search).get('direct');
+if(['home','atlas','about','facilities','vessels'].includes(directMode)){
+ requestAnimationFrame(()=>{
+  try{
+   portal.style.display='none';nativeEnter.click();
+   if(!app.classList.contains('ready'))nativeSkip.click();
+   const go=document.querySelector('#app [data-view="'+directMode+'"]');
+   if(go&&directMode!=='home')go.click();
+   started=true;finished=true;destination=directMode;
+   window.STS_TERMINAL_V9_STATE={started:true,finished:true,destination:directMode,phase:5,direct:true};
+  }catch(error){console.error('STS direct access:',error);
+   portal.style.display='';nativeSkip.click();app.classList.add('ready');
+  }
+ });
+}
 })();
