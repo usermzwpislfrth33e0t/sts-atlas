@@ -445,7 +445,7 @@ renderOverlay(){const ctx=this.ctx,w=this.width,h=this.height;ctx.setTransform(t
  ctx.restore()}
 tick(now){requestAnimationFrame(this.tick);if(this.hidden||!this.canvas.offsetParent){this.last=now;return}if(window.innerWidth<700&&now-(this.lastRender||0)<29)return;this.lastRender=now;const dt=clamp((now-this.last)/1000,0,.08);this.last=now;this.animClock+=dt;if(this.canvas.clientWidth!==this.width||this.canvas.clientHeight!==this.height)this.resize();if(!this.width)return;const c=this.camera;let k=1-Math.exp(-dt*4);c.target=lerp(c.target,c.destTarget,k);c.dist+=(c.destDist-c.dist)*k;c.az+=(c.destAz-c.az)*k;c.el+=(c.destEl-c.el)*k;this.updateJourney(dt);this.basis=this.cameraBasis();if(this.gl&&this.useWebGL)this.renderGL();else this.renderFallback();this.renderOverlay();if(this.frame++%12===0)this.onMove('camera')}
 }
-window.STS3D={Atlas3D,BODIES,MOON,STATIONS,ROUTES,PRESETS,resolve,LOOK,STATION_BY_ID,lerp,len,sub,MAP_SCALE:ATLAS_UNITS,PLANET_GROWTH:PLANET_ENLARGE,SECTORS:SECTOR_LABELS,SOURCE:STS_SOURCE};
+window.STS3D={Atlas3D,BODIES,MOON,STATIONS,ROUTES,PRESETS,resolve,LOOK,STATION_BY_ID,lerp,len,sub,MAP_SCALE:ATLAS_UNITS,PLANET_GROWTH:PLANET_ENLARGE,transferArc,safeRoutePoints,SECTORS:SECTOR_LABELS,SOURCE:STS_SOURCE};
 })();
 
 </script><script>
