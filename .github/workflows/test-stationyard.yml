@@ -1,7 +1,7 @@
 name: Test STS Station Engineering
 on:
   push:
-    paths: [.github/workflows/test-stationyard.yml, stationyard-v1.js, stationyard-v1.css]
+    paths: [.github/workflows/test-stationyard.yml, stationyard-v1.js, stationyard-v1.css, stationyard.bundle.js, shipyard-v7.bundle.js]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
           const binary=execSync('which google-chrome || which chromium').toString().trim();
           const browser=await chromium.launch({headless:true,executablePath:binary,args:['--no-sandbox','--disable-gpu-sandbox']});
           const page=await browser.newPage({viewport:{width:1360,height:1024},deviceScaleFactor:1});
-          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
           await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:45000});
           await page.addStyleTag({content:'#portal,#boot{display:none!important} #app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #facilitiesView{display:block!important;opacity:1!important;visibility:visible!important;position:relative!important}'});
           await page.evaluate(()=>document.querySelector('#facilitiesView')?.classList.add('active'));
@@ -83,7 +83,7 @@ jobs:
           for(let i=0;i<mapB64.length;i+=6000)console.log('SHOT_CHUNK:MAP:'+i+':'+mapB64.slice(i,i+6000));
           console.log('SHOT_END:MAP');
           const mobile=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
-          mobile.on('pageerror',e=>errors.push('mobile: '+e.message));
+          mobile.on('pageerror',e=>errors.push('mobile: '+(e.stack||e.message)));
           await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:45000});
           await mobile.addStyleTag({content:'#portal,#boot{display:none!important} #app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #facilitiesView{display:block!important;opacity:1!important;visibility:visible!important;position:relative!important}'});
           await mobile.evaluate(()=>document.querySelector('#facilitiesView')?.classList.add('active'));
