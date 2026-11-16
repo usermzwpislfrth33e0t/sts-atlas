@@ -39,7 +39,11 @@ jobs:
               source = source.replace('</head>', css + '\n</head>', 1)
               source = source.replace('</body></html>', script + '\n</body></html>', 1)
               index.write_text(source, encoding='utf-8')
-          assert 'shipyard-v5.js' in source and 'shipyard-v5.css' in source
+          source = source.replace('shipyard-v5.css?v=5.2', 'shipyard-v5.css?v=7.1')
+          source = source.replace('shipyard-v5.js?v=5.2', 'shipyard-v5.js?v=7.1')
+          if index.read_text(encoding='utf-8') != source:
+              index.write_text(source, encoding='utf-8')
+          assert 'shipyard-v5.js?v=7.1' in source and 'shipyard-v5.css?v=7.1' in source
           PY
       - name: Make V5 part of the source (avoid competing Pages deployments)
         run: |
