@@ -48,7 +48,7 @@ jobs:
           station_js = '<script type="module" src="./stationyard.bundle.js?v=1.3"></script>'
           if 'stationyard-v1.css' not in source:
               source = source.replace('</head>', station_css + '\n</head>', 1)
-          if 'stationyard-v1.js' not in source:
+          if 'stationyard-v1.js' not in source and 'stationyard.bundle.js' not in source:
               source = source.replace('</body></html>', station_js + '\n</body></html>', 1)
           source = source.replace('stationyard-v1.css?v=1.0', 'stationyard-v1.css?v=1.2')
           source = source.replace('stationyard-v1.js?v=1.0', 'stationyard.bundle.js?v=1.3')
