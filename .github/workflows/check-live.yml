@@ -1,7 +1,7 @@
 name: Production reachability test
 on:
   push:
-    paths: [.github/workflows/check-live.yml]
+    paths: [.github/workflows/check-live.yml, stationyard.bundle.js, shipyard-v7.bundle.js]
   workflow_dispatch:
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
       - name: Fetch publicly deployed site (do not trust deployment status)
         run: |
           set +e
-          for url in 'https://usermzwpislfrth33e0t.github.io/sts-atlas/' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/stationyard-v1.js?v=1.2' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/vendor/three.module.js'; do
+          for url in 'https://usermzwpislfrth33e0t.github.io/sts-atlas/' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/stationyard.bundle.js?v=1.3' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/shipyard-v7.bundle.js?v=7.3'; do
             echo "LIVE URL: $url"
             curl -vIL --connect-timeout 15 --max-time 35 --retry 2 --retry-delay 3 "$url" 2>&1 | tail -n 35
             echo "BODY STATUS:"
@@ -37,7 +37,9 @@ jobs:
           try{
           const res=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/',{waitUntil:'domcontentloaded',timeout:50000});
           console.log('LIVE_BROWSER',JSON.stringify({status:res?.status(),url:page.url(),title:await page.title(),bodyLen:(await page.locator('body').innerText()).length,portalVisible:await page.locator('#portal').isVisible(),stationsReady:await page.evaluate(()=>window.STS_STATIONYARD_READY===true)}));
-          await page.waitForTimeout(4000);
+          await page.waitForTimeout(2000);
+          console.log('LIVE_STATION_READY',await page.evaluate(()=>window.STS_STATIONYARD_READY===true));
+          try{await page.evaluate(()=>document.querySelector('#portal')?.remove());await page.addStyleTag({content:'#app{display:block!important;opacity:1!important;visibility:visible!important}#facilitiesView{display:block!important;opacity:1!important;visibility:visible!important}'});await page.evaluate(()=>document.querySelector('#facilitiesView')?.classList.add('active'));await page.waitForFunction(()=>window.STS_STATIONYARD_READY===true,{timeout:12000});console.log('LIVE_STATION_RENDER',{options:await page.locator('#stationyardSelect option').count(),canvases:await page.locator('#stationyardCanvas').count()});}catch(e){console.log('LIVE_STATION_RENDER_FAIL',String(e))}
           console.log('LIVE_AFTER_4S',JSON.stringify({url:page.url(),view:await page.locator('.view.active').count(),body:await page.locator('body').innerText().then(s=>s.slice(0,250))}));
           }catch(e){console.log('LIVE_BROWSER_FAILURE',String(e))}
           await browser.close();
