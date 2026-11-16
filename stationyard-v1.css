@@ -51,3 +51,11 @@
 .stationyard-inspector-open{margin:14px 0 3px;width:100%;text-align:center;background:#1c3346;color:#d4eeff;border:1px solid #567d98;padding:14px 10px;font:10px ui-monospace,monospace;letter-spacing:.8px;cursor:pointer}
 .stationyard-inspector-open:hover{background:#2b4d63}
 .stationyard-card-open:focus-visible,.stationyard-inspector-open:focus-visible{outline:2px solid #b1def7;outline-offset:2px}
+
+/* V12 mobile engineering-view overlay: prevent watermark/header collision. */
+@media(max-width:720px){
+ .stationyard-viewport .shipyard-watermark{display:none!important}
+ .stationyard-viewport .shipyard-sensor{max-width:calc(100% - 22px);padding:10px 12px}
+ .stationyard-viewport .shipyard-sensor>span{display:block;white-space:normal;line-height:1.55;font-size:9px;letter-spacing:.8px}
+ .stationyard-viewport .shipyard-sensor>b{display:block;max-width:100%;font-size:8px;white-space:normal;letter-spacing:.7px;line-height:1.5}
+}
