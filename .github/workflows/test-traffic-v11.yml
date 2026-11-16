@@ -15,9 +15,9 @@ jobs:
           node --check sts-traffic-v11.js
           node --check shipyard-v7.js
           node --check stationyard-v1.js
-          grep -q 'sts-traffic-v11.js?v=11.1' index.html
-          grep -q 'stationyard-v1.js?v=11.0' index.html
-          grep -q 'shipyard-v7.js?v=11.0' shipyard-v5.js
+          grep -q 'sts-traffic-v11.js?v=12.0' index.html
+          grep -q 'stationyard-v1.js?v=12.0' index.html
+          grep -q 'shipyard-v7.js?v=12.0' shipyard-v5.js
       - name: Browser simulation tests (mobile & desktop)
         run: |
           npm install --no-save --ignore-scripts playwright-core@1.57.0
@@ -31,7 +31,7 @@ jobs:
               const page=await browser.newPage({viewport:{width,height},isMobile:width<700,hasTouch:width<700,deviceScaleFactor:1});
               page.on('pageerror',e=>errors.push(e.stack||e.message));
               page.on('response',r=>{if(r.status()>=400)responses.push('HTTP '+r.status()+' '+r.url())});
-              await page.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-11.0',{waitUntil:'domcontentloaded',timeout:50000});
+              await page.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-12.0',{waitUntil:'domcontentloaded',timeout:50000});
               await page.waitForFunction(()=>window.STS_TRAFFIC_V11_READY===true&&window.STS_SHIPYARD_V7_READY===true&&window.STS_STATIONYARD_READY===true&&!!window.STS_GET_ATLAS?.()&&!!window.STS_SHIPYARD_EXPORT_MODEL&&!!window.STS_STATIONYARD_EXPORT_MODEL,{timeout:40000});
               await page.waitForTimeout(850);
               const ready=await page.evaluate(()=>({
