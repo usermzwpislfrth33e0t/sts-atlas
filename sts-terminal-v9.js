@@ -6,6 +6,7 @@ const portal=document.getElementById('portal'),nativeEnter=document.getElementBy
       app=document.getElementById('app');
 if(!portal||!nativeEnter||!nativeSkip||!nativeBoot||!app){console.warn('STS terminal: original entry controls unavailable');return}
 const STS=window.STS3D||{},reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.documentElement.classList.add('sts10-terminal');
 const stationCount=STS.STATIONS?.length||79,linkCount=STS.ROUTES?.length||128,corridorCount=STS.PRESETS?.length||12;
 let started=false,finished=false,destination='home',phase=-1,bootToken=0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -92,17 +93,25 @@ function setStage(index,status){
  if(index===5)boot.classList.add('sts9-boot-finish');
 }
 function proceedToView(){
- if(finished)return;finished=true;bootToken++;
- if(!app.classList.contains('ready'))nativeSkip.click();
- boot.classList.remove('sts9-boot-open');boot.setAttribute('aria-hidden','true');
- boot.style.pointerEvents='none';
- requestAnimationFrame(()=>{
-  if(destination!=='home'){
-   const link=document.querySelector('#app [data-view="'+destination+'"]');
-   if(link)link.click();
-  }
-  window.STS_TERMINAL_V9_STATE={started:true,finished:true,destination,phase};
- });
+ if(finished)return;
+ finished=true;bootToken++;
+ try{
+   // Run the site's legacy finalizer only once, after the complete new
+   // sequence (or when SKIP was explicitly pressed).
+   if(!app.classList.contains('ready'))nativeSkip.click();
+   if(destination!=='home'){
+     const link=document.querySelector('#app [data-view="'+destination+'"]');
+     if(link)link.click();
+   }
+ }catch(error){console.error('STS entry finalization:',error)}
+ // Keep the sequence visible while the destination sets up its first
+ // frame. Removing the overlay before starting the map caused blank flashes.
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   boot.classList.remove('sts9-boot-open');
+   boot.setAttribute('aria-hidden','true');
+   boot.style.pointerEvents='none';
+   window.STS_TERMINAL_V9_STATE={started:true,finished:true,destination,phase};
+ }));
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function performSequence(token){
@@ -110,33 +119,27 @@ async function performSequence(token){
   if(token!==bootToken||finished)return;
   const good=stages[i].test();
   setStage(i,good?stages[i].result:'NOT AVAILABLE');
-  await pause(reduce?130:(i===0?310:425));
+  await pause(reduce?65:225);
  }
  if(token!==bootToken||finished)return;
- // The original application makes its real readiness transition after entry.
- if(!app.classList.contains('ready'))nativeSkip.click();
+ // The original site is finalized only after the new six-stage sequence.
+ // Never trigger its legacy skip while the entry animation is running.
  byId('sts9BootTitle').textContent='SESSION READY';
  byId('sts9BootDescription').textContent='공개 기록 열람 화면으로 이동합니다.';
  byId('sts9BootStep').textContent='06 / 06 · READY';
  byId('sts9Log1').textContent='REGISTER / '+stationCount+' FACILITIES · '+linkCount+' LINKS';
  byId('sts9Log2').textContent='DISPLAY / '+destination.toUpperCase()+' VIEW';
- await pause(reduce?80:380);
+ await pause(reduce?75:210);
  if(token===bootToken)proceedToView();
 }
 function launch(mode){
  if(started||finished)return;started=true;destination=['home','atlas','about'].includes(mode)?mode:'home';bootToken++;
  boot.classList.add('sts9-boot-open');boot.setAttribute('aria-hidden','false');boot.style.pointerEvents='auto';
- // Prepare the actual application immediately. The new diagnostic boot
- // continues visually, but no longer races the legacy two-second timer.
- try{
-   nativeEnter.click();
-   if(!app.classList.contains('ready'))nativeSkip.click();
- }catch(error){
-   console.error('STS terminal entry handoff:',error);
- }
+ // Start audio from the real user gesture, but suppress the obsolete
+ // native boot visually. It has a 2.02 second completion timer; our sequence
+ // is guaranteed shorter and finalizes the app once, at the end.
+ try{nativeEnter.click()}catch(error){console.error('STS terminal entry:',error)}
  document.activeElement?.blur?.();
- const token=bootToken;
- setTimeout(()=>{if(started&&!finished&&bootToken===token)proceedToView()},7000);
  performSequence(bootToken);
 }
 portal.querySelectorAll('[data-sts9-destination]').forEach(btn=>{
