@@ -1,7 +1,7 @@
 name: Test STS Station Engineering
 on:
   push:
-    paths: [.github/workflows/test-stationyard.yml]
+    paths: [.github/workflows/test-stationyard.yml, stationyard-v1.js, stationyard-v1.css]
   workflow_dispatch:
 permissions:
   contents: read
@@ -57,6 +57,47 @@ jobs:
             wire:document.querySelector('#stationyardWire').getAttribute('aria-pressed'),
             mapOverride:window.STS3D.Atlas3D.prototype.drawStation.toString().includes("CATCHER")
           })));
+          await page.evaluate(()=>{
+            const shell=document.createElement('div');shell.id='mapStageTest';
+            shell.style.cssText='position:fixed;z-index:99999;top:0;left:0;width:980px;height:620px;background:#08131d';
+            shell.innerHTML='<canvas id="mapStageCanvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas><canvas id="mapStageOverlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>';
+            document.body.appendChild(shell);
+            const A=window.STS3D.Atlas3D;
+            const atlas=new A(document.getElementById('mapStageCanvas'),document.getElementById('mapStageOverlay'),{});
+            const st=window.STS3D.STATION_BY_ID.E03;
+            atlas.selected=st;atlas.camera.target=st.xyz.slice();atlas.camera.destTarget=st.xyz.slice();
+            atlas.camera.dist=21;atlas.camera.destDist=21;atlas.camera.az=-.7;atlas.camera.destAz=-.7;
+            atlas.camera.el=.40;atlas.camera.destEl=.40;
+            window.__stationAtlas=atlas;
+          });
+          await page.waitForTimeout(950);
+          console.log('MAP_STATION_TEST',JSON.stringify(await page.evaluate(()=>({
+            webgl:window.__stationAtlas.useWebGL,
+            selected:window.__stationAtlas.selected.id,
+            zoom:window.__stationAtlas.camera.dist,
+            projected:window.__stationAtlas.project(window.__stationAtlas.selected.xyz,window.__stationAtlas.basis)
+          }))));
+          const mapShot=await page.locator('#mapStageTest').screenshot({type:'jpeg',quality:58});
+          const mapB64=mapShot.toString('base64');
+          console.log('SHOT_START:MAP:'+mapB64.length);
+          for(let i=0;i<mapB64.length;i+=6000)console.log('SHOT_CHUNK:MAP:'+i+':'+mapB64.slice(i,i+6000));
+          console.log('SHOT_END:MAP');
+          const mobile=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          mobile.on('pageerror',e=>errors.push('mobile: '+e.message));
+          await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:45000});
+          await mobile.addStyleTag({content:'#portal,#boot{display:none!important} #app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #facilitiesView{display:block!important;opacity:1!important;visibility:visible!important;position:relative!important}'});
+          await mobile.evaluate(()=>document.querySelector('#facilitiesView')?.classList.add('active'));
+          await mobile.waitForFunction(()=>window.STS_STATIONYARD_READY,{timeout:35000});
+          await mobile.waitForTimeout(600);
+          console.log('MOBILE_TEST',JSON.stringify(await mobile.evaluate(()=>{
+            const box=document.querySelector('#stationyardViewport').getBoundingClientRect();
+            return {width:innerWidth,viewportWidth:box.width,viewportHeight:box.height,
+              documentScrollWidth:document.documentElement.scrollWidth,
+              selected:document.querySelector('#stationyardSelect').value};
+          })));
+          await mobile.locator('.stationyard-class[data-type="ARRAY"]').click();
+          console.log('MOBILE_SELECTION',await mobile.locator('#stationyardName').textContent());
+          await mobile.close();
           console.log('JS_ERRORS',JSON.stringify(errors));
           await browser.close();if(errors.length)process.exitCode=1;
           })().catch(e=>{console.error('TEST_FAIL',e);process.exitCode=1});
