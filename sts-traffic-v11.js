@@ -19,7 +19,7 @@ const shipInfo={
  fusion:{label:'Fusion transport',kr:'핵융합 수송선',drive:'FUSION / D–³He',time:1,power:3.8,mass:840},
  tug:{label:'Service cutter',kr:'핵융합 지원선 (시연)',drive:'FUSION / AUXILIARY',time:.73,power:1.8,mass:140}
 };
-const state={mode:'sail',vessel:'freighter',scale:1,paused:false,ready:false,showBeam:true,sender:null,beamGW:0,energyTJ:0,phase:'STANDBY',activeHours:0,lastPaint:0,final:null};
+const state={mode:'sail',vessel:'freighter',scale:1,paused:false,follow:true,ready:false,showBeam:true,sender:null,beamGW:0,energyTJ:0,phase:'STANDBY',activeHours:0,lastPaint:0,final:null};
 window.STS_TRAFFIC_V11_STATE=state;
 const modeLabel=m=>m==='fusion'?'INDEPENDENT FUSION CORRIDOR':'STS BEAM NETWORK';
 const sources=V.STATIONS.filter(s=>['ARRAY','RELAY','POWER','HUB'].includes(s.type)&&((s.electric_GWe||0)>.18));
@@ -78,8 +78,8 @@ const drawStationOriginal=Atlas.prototype.drawStation;
 Atlas.prototype.drawStation=function(st){
  const focus=this.selected?.id===st.id,projected=this.project(st.xyz,this.basis);
  if(!focus||!projected||!this.useWebGL||this.camera.dist>115)return drawStationOriginal.call(this,st);
- const target=clamp(Math.min(this.width,this.height)*.14,58,92);
- const scale=clamp(target/(projected.scale*17),.028,.65);
+ const target=clamp(Math.min(this.width,this.height)*.20,75,116);
+ const scale=clamp(target/(projected.scale*15),.035,.85);
  if(!drawEngineering(this,'station',st.type,st.xyz,scale,null,.33))drawStationOriginal.call(this,st);
 };
 const drawShipOriginal=Atlas.prototype.drawShip;
@@ -94,8 +94,8 @@ Atlas.prototype.drawShip=function(center,forward){
  const angle=clamp(this.shipFlipAngle||0,0,Math.PI);
  const cx=Math.cos(angle),sx=Math.sin(angle);
  const axes=[vec(mul(x,cx),mul(dir,-sx)),y,vec(mul(dir,cx),mul(x,sx))];
- const target=clamp(Math.min(this.width,this.height)*.20,70,116);
- const scale=clamp(target/(Math.max(.5,projection.scale)*18),.035,2.5);
+ const target=clamp(Math.min(this.width,this.height)*.33,116,175);
+ const scale=clamp(target/(Math.max(.5,projection.scale)*14),.06,3.5);
  if(!drawEngineering(this,'ship',key,center,scale,axes,.34))drawShipOriginal.call(this,center,forward);
 };
 function deriveFusionNodes(){
@@ -114,7 +114,8 @@ panel.innerHTML=
  '<div class="sts11-fusion" id="stsFusionCorridor" hidden><div class="sts11-label">FUSION CORRIDOR / 독립 운항 구간</div><div class="sts11-fusion-grid"><label>ORIGIN<select id="stsFusionFrom"></select></label><label>DESTINATION<select id="stsFusionTo"></select></label></div><p>기존 송전 간선망을 경유하지 않는 독립 항행 시나리오입니다.</p></div>'+
  '<div class="sts11-label">SIMULATION TIME SCALE / 운항 시간 배율</div><div class="sts11-speed" role="group" aria-label="시간 배율">'+
  [1,5,20,100].map(n=>'<button type="button" data-timescale="'+n+'" aria-pressed="'+String(n===1)+'">'+n+'×</button>').join('')+
- '<button type="button" id="sts11Pause" aria-pressed="false">PAUSE</button></div>'+
+ '<button type="button" id="sts11Pause" aria-pressed="false">PAUSE</button></div>'+ 
+ '<button type="button" class="sts11-follow" id="sts11Follow" aria-pressed="true">CHASE CAMERA / 선박 추적 ON</button>'+
  '<p class="sts11-footnote">시뮬레이션 기준 1× = 실제 1초당 시나리오 2시간. 운항 시간·속도·전력은 설정 기반의 예시 계산값이며 실제 천체력 예측이 아닙니다.</p>'+
  '<div class="sts11-telemetry" aria-live="off">'+
  '<div><small>SPEED / 속도</small><strong id="sts11Speed">— km/s</strong></div>'+
@@ -161,6 +162,11 @@ panel.querySelectorAll('[data-timescale]').forEach(b=>b.addEventListener('click'
  ui('journeySpeed').textContent=state.scale+'×';
 }));
 ui('sts11BeamVisible').addEventListener('change',e=>{state.showBeam=e.target.checked});
+ui('sts11Follow').addEventListener('click',()=>{
+ state.follow=!state.follow;
+ ui('sts11Follow').textContent='CHASE CAMERA / 선박 추적 '+(state.follow?'ON':'OFF');
+ ui('sts11Follow').setAttribute('aria-pressed',String(state.follow));
+});
 ui('sts11Pause').addEventListener('click',()=>{
  const a=window.STS_GET_ATLAS?.();if(!a?.activeJourney)return;
  state.paused=!state.paused;
@@ -283,6 +289,10 @@ Atlas.prototype.updateJourney=function(dt){
  const p=profilePosition(local),a=sample(leg.points,clamp(p-.004,0,1)),b=sample(leg.points,clamp(p+.004,0,1));
  this.shipPos=sample(leg.points,p);
  this.shipDir=unit(sub(b,a));
+ if(state.follow){
+   this.camera.destTarget=interp(this.camera.destTarget,this.shipPos,clamp(dt*3.5,0,1));
+   this.camera.destDist=clamp(Math.max(14,Math.min(this.width,this.height)*.037),11,26);
+ }
  const phase=phaseAt(local);state.phase=phase;
  this.shipFlipAngle=local<=.735?0:local<.80?(local-.735)/.065*Math.PI:Math.PI;
  const instantKmS=leg.distanceKm/leg.durationSec*profileVelocity(local);
