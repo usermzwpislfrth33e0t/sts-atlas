@@ -132,6 +132,8 @@ panel.innerHTML=
  '<div><small>ELAPSED / 경과 시간</small><strong id="sts11Elapsed">—</strong></div>'+
  '<div><small>MISSION ΔV / 총 속도변화</small><strong id="sts14Dv">—</strong></div>'+
  '<div><small>LAUNCH WINDOW / 호만 기준 위상</small><strong id="sts14Window">—</strong></div>'+
+ '<div><small>PEAK TRANSFER SPEED / 최고 상대속도</small><strong id="sts15Peak">— km/s</strong></div>'+
+ '<div><small>PROPULSION BUDGET / 추진제·소요출력</small><strong id="sts15Budget">—</strong></div>'+
  '</div>'+
  '<div class="sts11-beam" id="sts11BeamPanel"><div><span>ACTIVE POWER FEED / 송전 연결</span><strong id="sts11BeamFrom">STANDBY</strong></div><div><span>RECEIVER / 수신 방식</span><strong id="sts11BeamMode">—</strong></div>'+
  '<label><input type="checkbox" id="sts11BeamVisible" checked>지도에 실시간 송전 빔 표시</label></div>'+
@@ -307,7 +309,7 @@ function transferPlan(from,to,mode,vessel,profile=state.profile){
  return {...ref,regional:false,profileType:profile,kind:express?'POWERED EXPRESS':'POWERED REGULAR',
    distanceKm,durationSec,dvKmS,peakKmS,energyJ,powerGW,propellantTonnes,
    thrustFraction:f,reactorMaxGW:perf.maxGW,
-   orbitalSpeed(t){return peakKmS*profileVelocity(t)/(1/.75);},
+   orbitalSpeed(t){return peakKmS*profileVelocity(t)*.75;},
    // Astronomical launch timing still uses circular reference; rapid transfer
    // windows are much broader and not accurately solved by Hohmann phasing.
    waitDays:null,factor:durationSec/ref.hohmannSec};
@@ -339,7 +341,7 @@ function phaseAt(t){
  if(t>=.999)return 'ARRIVAL';
  if(t>.75)return 'DECELERATION';
  if(t>.68)return 'BRAKE FLIP';
- if(t<.23)return 'ACCELERATION';
+ if(t<.25)return 'ACCELERATION';
  return 'MIDCOURSE COAST';
 }
 function transmitter(shipPos,routeLeg,elapsed,atlas){
@@ -425,7 +427,7 @@ Atlas.prototype.updateJourney=function(dt){
  // Relative transit speed: exactly the derivative of the 25/50/25
  // acceleration / coast / deceleration travel profile.
  j.currentSpeed=leg.profileType==='ballistic'
-   ?leg.orbitalSpeed(local):leg.peakKmS*profileVelocity(local)/ (1/.75);
+   ?leg.orbitalSpeed(local):leg.peakKmS*profileVelocity(local)*.75;
  const thrusting=leg.profileType!=='ballistic'&&(phase==='ACCELERATION'||phase==='DECELERATION');
  if(j.preset.mode==='sail'){
   const beam=thrusting?transmitter(this.shipPos,leg,j.elapsedSec,this):{source:null,type:'OFFLINE',power:0};
@@ -469,6 +471,10 @@ function renderTelemetry(atlas,j,leg,t){
  ui('sts14Window').textContent=leg.regional?'LOCAL / NO WINDOW':
    leg.profileType==='ballistic'?'~'+format(leg.waitDays,0)+' d / HOHMANN PHASE':
    'WIDE WINDOW / PHASE NOT SOLVED';
+ ui('sts15Peak').textContent=format(leg.peakKmS??0,1)+' km/s';
+ ui('sts15Budget').textContent=leg.profileType==='ballistic'?'BALLISTIC REFERENCE':
+   leg.regional?'LOCAL APPROACH':
+   format(leg.propellantTonnes,0)+' t / '+format(leg.powerGW,2)+' GW';
  ui('sts11BeamFrom').textContent=state.sender?state.sender.id+' / '+state.sender.name:'NO POWER FEED / COAST';
  ui('sts11BeamMode').textContent=state.beamMode+(state.sender?' · '+format(state.beamGW,2)+' GW':'');
  ui('sts11Status').textContent=shipInfo[j.preset.vessel].label.toUpperCase()+
