@@ -49,12 +49,12 @@ const camera=new THREE.PerspectiveCamera(39,1,.1,350);
 const renderer=new THREE.WebGLRenderer({canvas,alpha:false,antialias:!mobile,powerPreference:'high-performance'});
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.62;
+renderer.toneMappingExposure=1.42;
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,mobile?1.25:1.6));
 renderer.setClearColor(0x071019,1);
-scene.add(new THREE.HemisphereLight(0xe0f2ff,0x102131,2.05));
+scene.add(new THREE.HemisphereLight(0xe0f2ff,0x102131,1.85));
 function lamp(c,intensity,xyz){const l=new THREE.DirectionalLight(c,intensity);l.position.set(...xyz);scene.add(l)}
-lamp(0xf4f7f9,4.4,[-6,11,9]);lamp(0x8abce7,2.8,[7,-5,-10]);lamp(0xffc99f,1.05,[2,8,-4]);
+lamp(0xf4f7f9,4.0,[-6,11,9]);lamp(0x8abce7,2.6,[7,-5,-10]);lamp(0xffc99f,1.05,[2,8,-4]);
 const starPositions=[];
 for(let i=0;i<180;i++){const a=i*2.399963,b=Math.asin(2*((i*37%179)/179)-1),r=100;starPositions.push(Math.cos(a)*Math.cos(b)*r,Math.sin(b)*r,Math.sin(a)*Math.cos(b)*r)}
 const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));
@@ -212,7 +212,7 @@ function selectPart(id){if(!groups[id])return;selectedPart=id;
  const m=specs.find(m=>m.id===activeModel),part=m.parts.find(p=>p[0]===id);
  $$('.shipyard-part,.shipyard-pin').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.part===id)));
  $('#shipPartName').textContent=id.toUpperCase()+' / '+part[1];
- $('#shipPartDetail').textContent=part[2];recolor();
+ $('#shipPartDetail').textContent=part[2];recolor();state.dirty=true;
 }
 let anchors={};
 function selectModel(id){
