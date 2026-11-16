@@ -1,0 +1,59 @@
+name: Live STS Traffic V11.1 integration test
+on:
+  push:
+    paths: [.github/workflows/check-live-traffic.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm published release includes current scripts
+        run: |
+          base=https://usermzwpislfrth33e0t.github.io/sts-atlas
+          for n in $(seq 1 15); do
+            curl -Lsf --max-time 30 "$base/?v=traffic-11.1" -o /tmp/sts-site || true
+            if grep -q 'sts-traffic-v11.js?v=11.1' /tmp/sts-site; then break; fi
+            sleep 3
+          done
+          echo "LIVE_HTML_BYTES $(wc -c </tmp/sts-site)"
+          grep -q 'sts-traffic-v11.js?v=11.1' /tmp/sts-site
+          for asset in sts-traffic-v11.js sts-traffic-v11.css shipyard-v7.js stationyard-v1.js vendor/three.module.js; do
+            code=$(curl -L --connect-timeout 12 --max-time 35 -s -o /tmp/sts-asset -w '%{http_code}' "$base/$asset?v=11.1")
+            echo "LIVE_ASSET $asset HTTP_$code BYTES_$(wc -c </tmp/sts-asset)"
+            test "$code" = 200
+            test "$(wc -c </tmp/sts-asset)" -gt 500
+          done
+      - name: Real deployed site model and transmitter smoke
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.stack||e.message));
+            page.on('response',r=>{if(r.status()>=400)errors.push('HTTP '+r.status()+' '+r.url())});
+            const response=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/?direct=atlas&v=traffic-11.1',{waitUntil:'domcontentloaded',timeout:65000});
+            await page.waitForFunction(()=>window.STS_TRAFFIC_V11_READY&&window.STS_GET_ATLAS?.()&&window.STS_STATIONYARD_EXPORT_MODEL&&window.STS_SHIPYARD_EXPORT_MODEL,{timeout:40000});
+            console.log('LIVE_READY',JSON.stringify(await page.evaluate(()=>({atlas:document.querySelector('.view.active')?.id,stationCount:STS3D.STATIONS.length,diagnostics:window.STS_TRAFFIC_V11_DIAGNOSTICS()}))));
+            await page.locator('#openJourneyBtn').click();
+            await page.locator('[data-vessel="clipper"]').click();
+            await page.locator('#journeyStart').click();await page.waitForTimeout(850);
+            const sail=await page.evaluate(()=>window.STS_TRAFFIC_V11_DIAGNOSTICS());
+            console.log('LIVE_BEAM',JSON.stringify(sail));
+            if(!sail.shipModels.some(x=>x.id==='clipper'&&x.triangles>1000)||!sail.source)throw Error('Published sail model/transmitter missing');
+            await page.locator('#journeyStop').click();
+            await page.locator('[data-mode="fusion"]').click();
+            await page.locator('[data-timescale="5"]').click();
+            await page.locator('#journeyStart').click();await page.waitForTimeout(750);
+            const fusion=await page.evaluate(()=>({diag:window.STS_TRAFFIC_V11_DIAGNOSTICS(),preset:window.STS_GET_ATLAS().activeJourney?.preset}));
+            console.log('LIVE_FUSION',JSON.stringify(fusion));
+            if(fusion.preset.mode!=='fusion'||fusion.diag.scale!==5||!fusion.diag.shipModels.some(x=>x.id==='fusion'))throw Error('Published fusion mode failed');
+            console.log('LIVE_ERRORS',JSON.stringify(errors));
+            await browser.close();if(errors.length)process.exit(1);
+          })().catch(e=>{console.error('LIVE_FAIL',e);process.exit(1)});
+          JS
