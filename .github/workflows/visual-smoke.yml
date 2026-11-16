@@ -1,0 +1,49 @@
+name: Visual smoke test STS V6
+on:
+  push:
+    paths: [.github/workflows/visual-smoke.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node --check shipyard-v5.js
+      - run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          which google-chrome || which chromium || true
+      - name: Render four ships in browser
+        run: |
+          python3 -m http.server 8765 > /tmp/sts-http.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execSync}=require('child_process');
+          (async()=>{
+            const chrome=execSync('which google-chrome || which chromium').toString().trim();
+            const browser=await chromium.launch({headless:true,executablePath:chrome,args:['--no-sandbox','--disable-gpu-sandbox']});
+            const page=await browser.newPage({viewport:{width:1280,height:970},deviceScaleFactor:1});
+            const errors=[];
+            page.on('pageerror',error=>errors.push(error.message));
+            await page.goto('http://localhost:8765/',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.addStyleTag({content:'#portal,#boot{display:none!important}#app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #vesselsView{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #shipViewport{height:600px!important;min-height:600px!important}'});
+            await page.evaluate(()=>{document.querySelector('#vesselsView')?.classList.add('active');});
+            await page.waitForTimeout(400);
+            const viewport=page.locator('#shipViewport');
+            const size=await viewport.boundingBox();
+            console.log('VIEWPORT_SIZE',JSON.stringify(size));
+            for(const id of ['freighter','clipper','fusion','tug']){
+              await page.locator('[data-model="'+id+'"]').click();
+              await page.waitForTimeout(350);
+              const data=await viewport.screenshot({type:'jpeg',quality:62});
+              const b64=data.toString('base64');
+              console.log('SHOT_START:'+id+':'+b64.length);
+              for(let i=0;i<b64.length;i+=6000)console.log('SHOT_CHUNK:'+id+':'+i+':'+b64.slice(i,i+6000));
+              console.log('SHOT_END:'+id);
+            }
+            console.log('JS_ERRORS',JSON.stringify(errors));
+            await browser.close();
+            if(errors.length)process.exitCode=1;
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
