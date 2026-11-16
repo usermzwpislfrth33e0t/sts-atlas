@@ -27,6 +27,20 @@ jobs:
             p.on('response',r=>{if(r.status()>=400)bad.push(r.status()+' '+r.url())});
             await p.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-12.0',{waitUntil:'domcontentloaded',timeout:55000});
             await p.waitForFunction(()=>window.STS_TRAFFIC_V11_READY&&window.STS_SHIPYARD_EXPORT_MODEL&&window.STS_STATIONYARD_EXPORT_MODEL&&window.STS_GET_ATLAS?.(),{timeout:35000});
+            // Validate both the lazy-source attribute and actual decoded audio
+            // time progression after a genuine touch, not just a 200 response.
+            const lazy=await p.locator('#bgm').getAttribute('data-src');
+            if(lazy!=='./assets/sts-ambient.mp3')throw Error('CORRUPT_BGM_SRC '+lazy);
+            await p.locator('#bgmBtn').tap();
+            await p.waitForTimeout(1700);
+            const audio=await p.evaluate(()=>{
+              const a=document.getElementById('bgm');
+              return {paused:a.paused,readyState:a.readyState,time:a.currentTime,src:a.currentSrc,error:a.error?.code||null,button:document.getElementById('bgmState').textContent};
+            });
+            console.log('SAFARI_BGM',JSON.stringify(audio));
+            if(audio.error||audio.paused||audio.readyState<2||audio.time<=.05||audio.button!=='ON')throw Error('BGM_SAFARI_PLAYBACK_FAILURE '+JSON.stringify(audio));
+            await p.locator('#bgmBtn').tap();
+
             await p.locator('#openJourneyBtn').tap();
             await p.locator('[data-vessel="clipper"]').tap();
             await p.locator('#journeyStart').tap();
