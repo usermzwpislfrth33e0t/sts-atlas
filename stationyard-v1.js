@@ -424,8 +424,8 @@ if(atlas?.prototype){
   // Only the focused station receives an enlarged detailed model.
   // Other nearby facilities remain compact, preventing orbital clusters
   // from obscuring each other or the parent planet.
-  const px=selected?18:(dist<62?2.8:6);
-  const k=Math.max(selected?.16:.045,Math.min(selected?1.4:.52,px/Math.max(1,p.scale)));
+  const px=selected?22:(dist<62?2.2:5);
+  const k=Math.max(selected?.09:.03,Math.min(selected?1.1:.31,px/Math.max(1,p.scale)));
   const near=selected&&dist<145;
   const medium=near||dist>=62&&dist<115&&p.scale>.36;
   const center=(a,b,c)=>[x[0]+a*k,x[1]+b*k,x[2]+c*k];
@@ -434,6 +434,10 @@ if(atlas?.prototype){
   const box=(a,b,c,sx,sy,sz,col=primary)=>draw('box',a,b,c,[sx,sy,sz],col);
   const ring=(a,b,c,r=.9,th=.16,col=primary)=>draw('torus',a,b,c,[r,th,r],col);
   const cyl=(a,b,c,rx,ry,rz,col=primary)=>draw('cylinder',a,b,c,[rx,ry,rz],col);
+  const beamAngle=(a,b,c,len,width,angle,col=primary)=>{
+   const co=Math.cos(angle),si=Math.sin(angle),axes=[[co,si,0],[-si,co,0],[0,0,1]];
+   this.drawMesh(this.box,center(a,b,c),[len*k,width*k,.085*k],col,1,.56,axes);
+  };
   box(0,0,0,.48,.29,1.6,dark);
   if(!medium){if(['HUB','TERMINAL','ARRAY','CATCHER'].includes(st.type))ring(0,0,-.58,1,.16,primary);else box(0,0,.5,.90,.09,.23,primary);return}
   switch(st.type){
@@ -443,7 +447,18 @@ if(atlas?.prototype){
    case 'RELAY':cyl(0,.15,0,.19,1.8,.19);ring(0,0,-.3,.95,.08);box(-1.25,0,.8,1.85,.045,.7,dark);box(1.25,0,.8,1.85,.045,.7,dark);break;
    case 'ARRAY':ring(0,0,-1.4,1.45,.20);cyl(0,0,-.7,.27,.8,.27,blue);for(let a of [-1,1])for(let b of [-1,1])box(a*.85,b*.63,.5,.45,.26,.70,blue);break;
    case 'SAFETY':ring(0,0,-.2,1.05,.14);cyl(0,0,.1,.5,1.0,.5);box(1.1,-.3,.7,1.05,.35,.75);break;
-   case 'CATCHER':ring(0,0,-1.4,1.5,.12);ring(0,0,-.7,1.05,.12,dark);box(0,-.8,.8,1.6,.23,1.5);break;
+   case 'CATCHER':{
+    cyl(0,0,0,.37,.8,.37,dark);
+    ring(0,0,-.50,.54,.11,primary);
+    const a=this.animClock*.20;
+    for(let i=0;i<4;i++){const t=a+i*Math.PI*.5;
+      beamAngle(Math.cos(t)*1.25,Math.sin(t)*1.25,-.25,2.5,.065,t,primary);
+      const px=Math.cos(t)*2.45,py=Math.sin(t)*2.45;
+      ring(px,py,-.25,.23,.06,i%2?blue:accent);
+      box(px,py,.04,.22,.18,.18,accent);
+    }
+    box(0,0,.96,.72,.32,.78,dark);break;
+   }
    case 'POWER':for(let z of [-.8,.2,.9])cyl(0,0,z,.5,.65,.5);for(let a of [-1,1])box(a*1.45,0,.3,2.15,.045,1.5,accent);break;
    case 'SERVICE':for(let a of [-1,1])for(let b of [-1,1])cyl(a*.7,b*.62,.2,.22,1.5,.22);for(let a of [-1,1])box(a*1.1,0,1,1.15,.27,.24);break;
    default:box(0,0,.7,1,.13,.5)}
@@ -451,7 +466,73 @@ if(atlas?.prototype){
   if(st.type==='YARD'){for(const z of [-.8,.25,1.2])box(0,.82,z,1.9,.09,.10,accent)}
   if(st.type==='HUB'||st.type==='TERMINAL'){for(let a of [-1,1])box(a*.6,0,1.4,.35,.38,.45,blue)}
   if(st.type==='ARRAY'||st.type==='RELAY'){for(let a of [-1,1])box(a*.8,0,1.5,.82,.06,.45,dark)}
-  if(st.type==='SAFETY'||st.type==='CATCHER'){box(0,1.1,.5,.22,.3,.2,blue)}
+  if(st.type==='SAFETY'){box(0,1.1,.5,.22,.3,.2,blue)}
   if(st.type==='POWER'||st.type==='SERVICE'){box(0,0,1.6,.45,.38,.5,blue)}
  };
+  // Keep selected planets legible, prevent the Sun and distant planets from
+  // becoming giant foreground surfaces during local station inspection.
+  const oldBodyVisible=atlas.prototype.bodyVisible;
+  atlas.prototype.bodyVisible=function(body){
+    if(!oldBodyVisible.call(this,body))return false;
+    if(this.camera.dist>=118)return true;
+    if(body.id===this.selected?.id)return true;
+    const target=this.camera.target||[0,0,0];
+    const delta=Math.hypot(body.xyz[0]-target[0],body.xyz[1]-target[1],body.xyz[2]-target[2]);
+    if(body.id==='SOL' && Math.hypot(...target)>10 && this.camera.dist<100)return false;
+    return !(this.camera.dist<78&&delta>Math.max(21,this.camera.dist*.83));
+  };
+  const oldRenderGL=atlas.prototype.renderGL;
+  atlas.prototype.renderGL=function(){
+    const old=[];
+    if(this.basis){
+      for(const body of V.BODIES){
+        const p=this.project(body.xyz,this.basis);
+        if(!p)continue;
+        const isSelected=body.id===this.selected?.id;
+        const limit=isSelected?84:this.camera.dist>=125?70:34;
+        old.push([body,body.size]);
+        body.size=Math.min(body.size,limit/Math.max(1,p.scale));
+      }
+    }
+    try{return oldRenderGL.call(this)}
+    finally{for(const [b,size] of old)b.size=size}
+  };
+  // Mobile overlays should identify the selected object without showing
+  // a dense carpet of intersecting labels over a small map.
+  const originalOverlay=atlas.prototype.renderOverlay;
+  atlas.prototype.renderOverlay=function(){
+    if(this.width>=650||this.shipPos)return originalOverlay.call(this);
+    const c=this.ctx,w=this.width,h=this.height;
+    c.setTransform(this.dpr,0,0,this.dpr,0,0);c.clearRect(0,0,w,h);c.save();
+    for(const star of this.starfield){c.fillStyle='#d5e5ee';c.globalAlpha=star.alpha*.85;c.fillRect(star.x*w,star.y*h,star.size,star.size)}
+    c.globalAlpha=1;
+    const chosen=this.selected,pins=[],used=[],selectedPoint=chosen?.xyz?this.project(chosen.xyz,this.basis):null;
+    if(chosen?.xyz&&selectedPoint&&selectedPoint.x>=0&&selectedPoint.x<=w&&selectedPoint.y>=0&&selectedPoint.y<=h){
+      pins.push({obj:chosen,p:selectedPoint,priority:99});
+    }
+    const allow=(o)=>o.kind==='STATION'?this.visibleStation(o):this.bodyVisible(o);
+    const others=[...V.BODIES,...V.STATIONS].filter(o=>o!==chosen&&o.xyz&&allow(o)).map(o=>({obj:o,p:this.project(o.xyz,this.basis)}))
+      .filter(e=>e.p&&e.p.x>20&&e.p.x<w-20&&e.p.y>45&&e.p.y<h-55)
+      .sort((a,b)=>{
+        const ra=Math.hypot(a.p.x-w/2,a.p.y-h/2),rb=Math.hypot(b.p.x-w/2,b.p.y-h/2);
+        return (a.obj.kind==='STATION'?0:30)-(b.obj.kind==='STATION'?0:30)+ra-rb;
+      });
+    for(const entry of others){if(pins.length>=6)break;if(pins.some(q=>Math.hypot(q.p.x-entry.p.x,q.p.y-entry.p.y)<54))continue;pins.push(entry)}
+    for(const {obj,p} of pins){
+      if(p.x<-30||p.x>w+30||p.y<-30||p.y>h+30)continue;
+      const primary=obj===chosen,label=String(obj.name||obj.id).toUpperCase();
+      c.font=(primary?'600 11px':'9px')+' ui-monospace,monospace';
+      const tw=c.measureText(label).width,left=Math.max(10,Math.min(w-tw-10,p.x+12)),top=Math.max(52,Math.min(h-46,p.y-9));
+      const box={left:left-3,top:top-13,width:tw+7,height:18};
+      if(used.some(b=>box.left<b.left+b.width&&box.left+box.width>b.left&&box.top<b.top+b.height&&box.top+box.height>b.top)&&!primary)continue;
+      used.push(box);
+      c.fillStyle=primary?'#0b1928f1':'#0c1825c2';c.fillRect(box.left,box.top,box.width,box.height);
+      c.fillStyle=primary?'#e4f5ff':'#9bb7ca';c.fillText(label,left,top);
+      c.strokeStyle=primary?'#cbeaff':'#87abc1b0';c.lineWidth=primary?1.3:1;
+      c.beginPath();c.arc(p.x,p.y,primary?7:3.1,0,Math.PI*2);c.stroke();
+      if(primary){c.beginPath();c.setLineDash([4,5]);c.arc(p.x,p.y,20,0,Math.PI*2);c.stroke();c.setLineDash([])}
+    }
+    c.restore();
+  };
+
 }
