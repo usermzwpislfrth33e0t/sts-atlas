@@ -138,10 +138,10 @@ if(Atlas3D){
     }
     this._shipLastAngle=angle;
     const c=this.ctx;
-    const shipSize=clamp(Math.min(this.width,this.height)*.155,47,100);
+    const shipSize=clamp(Math.min(this.width,this.height)*.115,43,72);
     const sc=shipSize/56;
     c.save();c.translate(point.x,point.y);c.rotate(angle);c.scale(sc,sc);
-    c.shadowColor='#8fd5f7';c.shadowBlur=8;c.globalAlpha=.95;
+    c.shadowColor='#8fd5f7';c.shadowBlur=5;c.globalAlpha=.94;
     const reflect=(sx,sy,light)=>{
       c.beginPath();c.moveTo(sx*1.8,sy*1.8);c.lineTo(sx*29,sy*4.8);
       c.quadraticCurveTo(sx*36,sy*26,sx*27,sy*29);
@@ -164,6 +164,16 @@ if(Atlas3D){
     }
     c.fillStyle='#dce9f2';c.beginPath();c.moveTo(0,-12);c.lineTo(5,-3);c.lineTo(5,4);c.lineTo(-5,4);c.lineTo(-5,-3);c.closePath();c.fill();
     c.fillStyle='#93dafa';c.fillRect(-2,29,4,3.5);
+    c.restore();
+    // Replace the legacy label with one that stays clear of the vessel.
+    c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    const oldX=Math.min(this.width-180,point.x+10),oldY=Math.max(35,point.y-18);
+    c.fillStyle='#08131de8';c.fillRect(oldX-2,oldY-12,180,18);
+    const tx=Math.min(this.width-183,Math.max(8,point.x+shipSize*.64));
+    const ty=Math.max(25,Math.min(this.height-10,point.y-shipSize*.50));
+    c.fillStyle='#0b1b29eb';c.fillRect(tx-5,ty-12,176,20);
+    c.fillStyle='#cae6f4';c.font='10px ui-monospace,monospace';
+    c.fillText('BEAM SAIL / IN TRANSIT',tx,ty+2);
     c.restore();
   };
 }
