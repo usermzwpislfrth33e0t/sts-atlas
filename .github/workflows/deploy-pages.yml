@@ -45,13 +45,14 @@ jobs:
               index.write_text(source, encoding='utf-8')
           assert 'shipyard-v5.js?v=7.1' in source and 'shipyard-v5.css?v=7.1' in source
           station_css = '<link rel="stylesheet" href="./stationyard-v1.css?v=1.2">'
-          station_js = '<script type="module" src="./stationyard-v1.js?v=1.2"></script>'
+          station_js = '<script type="module" src="./stationyard.bundle.js?v=1.3"></script>'
           if 'stationyard-v1.css' not in source:
               source = source.replace('</head>', station_css + '\n</head>', 1)
           if 'stationyard-v1.js' not in source:
               source = source.replace('</body></html>', station_js + '\n</body></html>', 1)
           source = source.replace('stationyard-v1.css?v=1.0', 'stationyard-v1.css?v=1.2')
-          source = source.replace('stationyard-v1.js?v=1.0', 'stationyard-v1.js?v=1.2')
+          source = source.replace('stationyard-v1.js?v=1.0', 'stationyard.bundle.js?v=1.3')
+          source = source.replace('stationyard-v1.js?v=1.2', 'stationyard.bundle.js?v=1.3')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           assert station_js in source and station_css in source
@@ -72,6 +73,10 @@ jobs:
           node --check stationyard-v1.js
           test -s stationyard-v1.css
           test -s vendor/three.module.js
+          node --check stationyard.bundle.js
+          node --check shipyard-v7.bundle.js
+          test -s stationyard.bundle.js
+          test -s shipyard-v7.bundle.js
           test -s vendor/three.core.js
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
