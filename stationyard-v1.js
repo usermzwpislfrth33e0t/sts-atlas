@@ -305,6 +305,20 @@ function finishStation(ty,record){
 }
 
 const builders={HUB:hub,TERMINAL:terminal,YARD:yard,RELAY:relay,ARRAY:array,SAFETY:safety,CATCHER:catcher,POWER:power,SERVICE:service};
+/* Atlas geometry bridge: exact 3D station builders, isolated from the
+   engineering viewer so it may continue working independently. */
+window.STS_STATIONYARD_EXPORT_MODEL=(type)=>{
+ if(!builders[type])return null;
+ const oldRoot=root,oldParts=parts;
+ try{
+  root=new THREE.Group();parts={};builders[type]();
+  // Include the construction truss, clamps, arrays and specialized elements.
+  // The station identifier decal is viewer-only, as map archetypes are shared.
+  root.updateMatrixWorld(true);
+  return root;
+ }finally{root=oldRoot;parts=oldParts}
+};
+
 function refreshAppearance(){for(const [key,g] of Object.entries(parts))g.traverse(o=>{if(!o.isMesh)return;const m=o.material;if(!m.userData.base)m.userData.base=m.emissive.clone();
  m.emissive.copy(m.userData.base);if(key===selected)m.emissive.add(new THREE.Color(0x12354c));m.wireframe=state.wire;m.needsUpdate=true});state.dirty=true}
 function choosePart(key){if(!parts[key])return;selected=key;const spec=profile[activeRecord.type][4].find(p=>p[0]===key);if(!spec)return;
