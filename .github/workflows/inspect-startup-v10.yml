@@ -1,0 +1,38 @@
+name: Inspect STS Startup Weight
+on:
+  push:
+    paths: [.github/workflows/inspect-startup-v10.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyze HTML size and entry transition handlers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,collections
+          s=Path('index.html').read_text()
+          print('SIZE_HTML',len(s),'lines',s.count('\n')+1,'compressed_guess',len(s.encode()))
+          for regex in [r'<script([^>]*)>(.*?)</script>',r'<style([^>]*)>(.*?)</style>',r'<img[^>]+>',r'<link[^>]*>',r'<canvas[^>]*>',r'data:image/[^;]+;base64,']:
+            matches=list(re.finditer(regex,s,re.S|re.I))
+            print('TAG_STATS',regex,'count',len(matches),'sum',sum(len(m.group(0)) for m in matches))
+            print('TAG_LARGEST',[(len(m.group(0)),m.start(),m.group(0)[:100]) for m in sorted(matches,key=lambda x:len(x.group(0)),reverse=True)[:7]])
+          for needle in ['function startEntry(', 'function finishEntry(', 'function go(', 'enterBtn.addEventListener', "bootSkip.addEventListener", "enterBtn", "bootSkip", "boot-sequence", "portal", "app.ready", "finishEntry(", "startEntry(", "requestAnimationFrame"]:
+            locations=[m.start() for m in re.finditer(re.escape(needle),s)]
+            print('HANDLER',repr(needle),'count',len(locations),'locs',locations[-15:])
+            for pos in locations[-3:]:
+              if needle in ['enterBtn', 'bootSkip', 'requestAnimationFrame','portal','boot-sequence']:continue
+              print('SOURCE',repr(needle),repr(s[max(0,pos-450):pos+2800]))
+          for pos in [m.start() for m in re.finditer('function startEntry',s)]:
+            print('ENTRY_DETAIL',repr(s[pos:pos+5500]))
+          for pos in [m.start() for m in re.finditer('function finishEntry',s)]:
+            print('FINISH_DETAIL',repr(s[pos:pos+5000]))
+          for pos in [m.start() for m in re.finditer('const enterBtn=',s)]:
+            print('BUTTONS_DETAIL',repr(s[max(0,pos-100):pos+2300]))
+          print('EXTERNAL_SCRIPTS',re.findall(r'<script[^>]*src=["\047]([^"\047]+)',s))
+          print('BODY_TAGS',sum(len(list(re.finditer('<'+tag+'(?: |>)[^>]*>',s))) for tag in ['div','canvas','img','svg']))
+          PY
