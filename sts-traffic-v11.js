@@ -191,6 +191,24 @@ ui('sts11Pause').addEventListener('click',()=>{
 // These are not ephemeris-driven Lambert solutions or full n-body propagation.
 const AU_KM=149597870.7,MU_SUN=1.32712440018e11,DAY=86400,TAU_ORBIT=2*Math.PI;
 const regionAU={Earth:1,Luna:1,Mars:1.524,Belt:2.77,Helio:2.2,Jupiter:5.204,Saturn:9.58};
+const GRAVITY_WELL={
+ Earth:{mu:398600.44,parking:75000},Luna:{mu:4902.8,parking:10000},
+ Mars:{mu:42828.4,parking:24000},Belt:{mu:62.6,parking:20000},
+ Jupiter:{mu:126686534,parking:2100000},Saturn:{mu:37931187,parking:1700000}
+};
+function parkingOrbitKm(st){
+ if(st.id==='E01')return 42164; // Clarke Terminal / geosynchronous corridor
+ if(st.id==='E03'||st.id==='E04')return 1250000; // Earth-Moon Lagrange region
+ if(st.region==='Mars'&&st.id==='M01')return 110000;
+ return GRAVITY_WELL[st.region]?.parking||0;
+}
+function gravityWellKick(infinitySpeed,st){
+ const well=GRAVITY_WELL[st.region];
+ if(!well)return infinitySpeed;
+ const v2=well.mu/Math.max(1000,parkingOrbitKm(st));
+ return Math.sqrt(infinitySpeed*infinitySpeed+2*v2)-Math.sqrt(v2);
+}
+
 const mod=(a,m)=>((a%m)+m)%m;
 function orbitAU(st){
  return st.region==='Helio'?clamp(Math.hypot(st.xyz[0],st.xyz[2])/(27*U),1.05,5.1):(regionAU[st.region]||2.2);
@@ -206,13 +224,18 @@ function referenceTransfer(from,to){
  const hohmannSec=Math.PI*Math.sqrt(semi**3/MU_SUN);
  const vc1=Math.sqrt(MU_SUN/r1),vc2=Math.sqrt(MU_SUN/r2);
  const vt1=Math.sqrt(MU_SUN*(2/r1-1/semi)),vt2=Math.sqrt(MU_SUN*(2/r2-1/semi));
- const dvKmS=Math.abs(vt1-vc1)+Math.abs(vt2-vc2);
+ // Departure / arrival v-infinity at the edges of planetary gravity wells.
+ const vInfDepart=Math.abs(vt1-vc1),vInfArrive=Math.abs(vt2-vc2);
+ const heliocentricDv=vInfDepart+vInfArrive;
+ const injectionDv=gravityWellKick(vInfDepart,from),
+       captureDv=gravityWellKick(vInfArrive,to);
+ const dvKmS=injectionDv+captureDv;
  const n1=Math.sqrt(MU_SUN/r1**3),n2=Math.sqrt(MU_SUN/r2**3);
  const start=Math.atan2(from.xyz[2],from.xyz[0]),end=Math.atan2(to.xyz[2],to.xyz[0]);
  const phase=mod(Math.PI-n2*hohmannSec-(end-start),TAU_ORBIT),omega=n2-n1;
  const synodic=Math.abs(omega)>1e-13?TAU_ORBIT/Math.abs(omega):0;
  const waitDays=synodic?mod((omega<0?phase-TAU_ORBIT:phase)/omega,synodic)/DAY:0;
- const res={r1,r2,semi,hohmannSec,dvKmS,waitDays};
+ const res={r1,r2,semi,hohmannSec,dvKmS,heliocentricDv,injectionDv,captureDv,waitDays};
  let prev=null,distanceKm=0;
  const ecc=Math.abs(r2-r1)/(r2+r1);
  for(let i=0;i<=120;i++){
@@ -392,7 +415,8 @@ function renderTelemetry(atlas,j,leg,t){
  ui('sts11Phase').textContent=state.phase;
  ui('sts11Eta').textContent=duration(secondsLeft);
  ui('sts11Elapsed').textContent=duration(j.elapsedSec);
- ui('sts14Dv').textContent=format(leg.dvKmS,2)+' km/s · '+leg.kind;
+ ui('sts14Dv').textContent=format(leg.dvKmS,2)+' km/s'+
+   (leg.regional?' · LOCAL':' · INJECTION + CAPTURE');
  ui('sts14Window').textContent=leg.regional?'LOCAL / NO WINDOW':'~'+format(leg.waitDays,0)+' d / PHASE ESTIMATE';
  ui('sts11BeamFrom').textContent=state.sender?state.sender.id+' / '+state.sender.name:'NO POWER FEED / COAST';
  ui('sts11BeamMode').textContent=state.beamMode+(state.sender?' · '+format(state.beamGW,2)+' GW':'');
