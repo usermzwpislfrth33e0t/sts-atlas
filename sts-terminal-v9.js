@@ -7,6 +7,24 @@ const portal=document.getElementById('portal'),nativeEnter=document.getElementBy
 if(!portal||!nativeEnter||!nativeSkip||!nativeBoot||!app){console.warn('STS terminal: original entry controls unavailable');return}
 const STS=window.STS3D||{},reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 document.documentElement.classList.add('sts10-terminal');
+// iOS WebKit may request an MP3 even with preload="none" when the audio
+// element has a src. Keep only data-src until the user explicitly taps BGM.
+const bgm=document.getElementById('bgm');
+const bgmButton=document.getElementById('bgmBtn');
+if(bgm&&bgmButton){
+ const pending=bgm.getAttribute('data-src')||bgm.getAttribute('src');
+ if(pending&&!bgm.hasAttribute('data-src')){
+   bgm.setAttribute('data-src',pending);
+   bgm.removeAttribute('src');
+   bgm.load();
+ }
+ bgmButton.addEventListener('click',()=>{
+   if(!bgm.getAttribute('src')){
+     const audioPath=bgm.getAttribute('data-src');
+     if(audioPath)bgm.setAttribute('src',audioPath);
+   }
+ },true);
+}
 const stationCount=STS.STATIONS?.length||79,linkCount=STS.ROUTES?.length||128,corridorCount=STS.PRESETS?.length||12;
 let started=false,finished=false,destination='home',phase=-1,bootToken=0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
