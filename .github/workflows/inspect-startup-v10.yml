@@ -33,7 +33,7 @@ jobs:
             print('FINISH_DETAIL',repr(s[pos:pos+5000]))
           for pos in [m.start() for m in re.finditer('const enterBtn=',s)]:
             print('BUTTONS_DETAIL',repr(s[max(0,pos-100):pos+2300]))
-                    for m in re.finditer(r'data:[^;,"\\s]+(?:;[^,\\s"]+)*,',s):
+          for m in re.finditer(r'data:[^;,"\\s]+(?:;[^,\\s"]+)*,',s):
             print('DATA_URI',m.start(),repr(s[m.start():m.start()+90]))
           for m in re.finditer(r'<(?:audio|source|video|iframe|object|picture|svg)[^>]*>',s,re.I):
             print('MEDIA_TAG',m.start(),repr(s[m.start():m.start()+180]))
