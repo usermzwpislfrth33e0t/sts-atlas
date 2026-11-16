@@ -238,8 +238,64 @@ for(const st of STATIONS){
  const d=sub(st.xyz,host.xyz),L=len(d),safe=host.size*(st.region==='Luna'?1.65:1.45)+4;
  if(L<safe){const dir=norm(L>.001?d:[1,0,0]);for(let k=0;k<3;k++)st.xyz[k]=host.xyz[k]+dir[k]*safe}
 }
-// Cubic traffic curves must terminate at the expanded-clearance docking nodes.
-for(const r of ROUTES)r.points=curvePoints(r.a.xyz,r.b.xyz,38).map(p=>p);
+// Satellite centres must remain exterior to the exaggerated Jupiter/Saturn
+// radii. Propagate the displacement to their assigned orbiting facilities.
+for(const satellite of BODIES){
+ if(satellite.type!=='MOON'||!['Jupiter','Saturn'].includes(satellite.sector))continue;
+ const primary=satellite.sector==='Jupiter'?LOOK.JUPITER:LOOK.SATURN;
+ const offset=sub(satellite.xyz,primary.xyz),R=len(offset);
+ const clearance=primary.size+satellite.size+2*ATLAS_UNITS;
+ if(R>=clearance)continue;
+ const direction=norm(R<.001?[1,0,0]:offset),delta=mul(direction,clearance-R);
+ satellite.xyz=add(satellite.xyz,delta);
+ for(const st of STATIONS){
+  if(ANCHOR_BODY[st.anchor]===satellite.id)st.xyz=add(st.xyz,delta);
+ }
+}
+// A route around a planet is an orbital arc, not a straight line piercing
+// its surface. This is still a schematic network, not a physical ephemeris.
+const routeObstacles=BODIES.filter(b=>b.type==='STAR'||b.type==='PLANET'||b.id==='LUNA');
+function orbitalArc(a,b,body,steps=52){
+ const from=sub(a,body.xyz),to=sub(b,body.xyz),ra=len(from),rb=len(to);
+ const u=norm(from),v=norm(to),cosTheta=clamp(dot(u,v),-1,1);
+ const theta=Math.acos(cosTheta),side=sub(v,mul(u,cosTheta));
+ let tangent=norm(side);
+ if(len(side)<.00001){
+  tangent=norm(cross(u,Math.abs(u[1])<.83?[0,1,0]:[1,0,0]));
+ }
+ const pts=[];
+ for(let i=0;i<=steps;i++){
+  const t=i/steps,angle=theta*t;
+  const direction=norm(add(mul(u,Math.cos(angle)),mul(tangent,Math.sin(angle))));
+  const r=ra*(1-t)+rb*t+Math.sin(Math.PI*t)*2*ATLAS_UNITS;
+  pts.push(add(body.xyz,mul(direction,Math.max(r,body.size+2*ATLAS_UNITS))));
+ }
+ pts[0]=a.slice();pts[pts.length-1]=b.slice();return pts;
+}
+function safeRoutePoints(route){
+ const a=route.a.xyz,b=route.b.xyz,major=({Earth:LOOK.EARTH,Luna:MOON,Mars:LOOK.MARS})[route.a.region];
+ const nearHost=major&&route.a.region===route.b.region&&
+    len(sub(a,major.xyz))<major.size*3.5&&len(sub(b,major.xyz))<major.size*3.5;
+ let pts=nearHost?orbitalArc(a,b,major):curvePoints(a,b,52);
+ // Iterative clearance + smoothing of interregional curves, preventing the
+ // expanded celestial spheres from swallowing or intersecting traffic links.
+ for(let iteration=0;iteration<7;iteration++){
+  const next=pts.map(p=>p.slice());
+  for(let i=1;i<pts.length-1;i++){
+   let p=nearHost?pts[i].slice():lerp(pts[i],lerp(pts[i-1],pts[i+1],.5),.16);
+   for(const body of routeObstacles){
+    const diff=sub(p,body.xyz),r=len(diff),clearance=body.size+1.5*ATLAS_UNITS;
+    if(r>=clearance)continue;
+    const fallback=norm(cross(sub(b,a),[0,1,0]));
+    p=add(body.xyz,mul(norm(r>.01?diff:fallback),clearance));
+   }
+   next[i]=p;
+  }
+  pts=next;
+ }
+ pts[0]=a.slice();pts[pts.length-1]=b.slice();return pts;
+}
+for(const r of ROUTES)r.points=safeRoutePoints(r);
 const ADJ=new Map();for(const r of ROUTES){for(const [x,y] of [[r.from,r.to],[r.to,r.from]]){if(!ADJ.has(x))ADJ.set(x,[]);ADJ.get(x).push({next:y,route:r})}}
 const PRESETS=SERVICE_CORRIDORS.map(c=>({
  id:c.code,name:c.title,desc:`${c.class} · ${c.nodes.length-1} LEG${c.nodes.length>2?'S':''}`,
