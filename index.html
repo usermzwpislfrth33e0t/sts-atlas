@@ -48,7 +48,7 @@
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
-<audio id="bgm" preload="none" data-data-data-data-data-data-data-data-data-data-data-data-data-data-data-data-data-data-data-src="./assets/sts-ambient.mp3" loop></audio>
+<audio id="bgm" preload="none" data-src="./assets/sts-ambient.mp3" loop playsinline></audio>
 <section class="portal" id="portal" aria-label="접속 화면">
   <div class="portal-top"><span class="monogram">S<span class="dot">·</span>T<span class="dot">·</span>S</span><span class="micro portal-top-end">SOLAR TRAFFIC SYSTEM <span class="divider-mark">/</span> NETWORK ARCHIVE / 2120</span></div>
   <div class="portal-center">
@@ -437,7 +437,48 @@ q('#enterBtn').addEventListener('click',startEntry);q('#bootSkip').addEventListe
 function go(next,withSound=true){if(!appReady)return;if(!['home','atlas','facilities','vessels','about'].includes(next))next='home';view=next;qa('.view').forEach(el=>el.classList.remove('active'));q('#'+next+'View').classList.add('active');q('#topLocation').textContent=({home:'DIRECTORY',atlas:'NAVIGATION ATLAS',facilities:'INFRASTRUCTURE',vessels:'VESSEL ARCHIVE',about:'SYSTEM REFERENCE'})[next];closeJourney();closeMobileRail();if(withSound)sound('select');if(next==='atlas'){if(!atlas)createAtlas();requestAnimationFrame(()=>{atlas.resize();if(!atlas._initialFocus){atlas.setFocus('inner',true);atlas._initialFocus=true;qa('[data-focus]').forEach(x=>x.classList.toggle('active',x.dataset.focus==='inner'))}})}if(next==='facilities')renderRegistry();if(next!=='atlas'&&atlas){atlas.stopJourney();q('#journeyDrawer').classList.remove('open')}window.scrollTo({top:0,behavior:'instant'})}
 qa('[data-view]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.view)));q('#brandBtn').addEventListener('click',()=>go('home'));q('#menuBtn').addEventListener('click',()=>go('home'));
 q('#sfxBtn').addEventListener('click',()=>{sfxOn=!sfxOn;q('#sfxBtn').setAttribute('aria-pressed',String(sfxOn));q('#sfxState').textContent=sfxOn?'ON':'OFF';if(sfxOn)sound('tap')});
-$.bgm.volume=.24;q('#bgmBtn').addEventListener('click',async()=>{audioInit();if(bgmOn){$.bgm.pause();bgmOn=false}else{try{await $.bgm.play();bgmOn=true}catch(e){showToast('음악 재생이 차단되었습니다. 브라우저에서 실행해 주세요.')}}q('#bgmBtn').setAttribute('aria-pressed',String(bgmOn));q('#bgmState').textContent=bgmOn?'ON':'OFF';sound('tap')});
+// Audio is lazy-loaded only after a real user gesture. Never silently claim
+// BGM is ON until the browser resolves its play() promise.
+let bgmExplicitOff=false,bgmRequest=0;
+function setBgmState(on,loading=false){
+ bgmOn=!!on;
+ q('#bgmBtn').setAttribute('aria-pressed',String(bgmOn));
+ q('#bgmState').textContent=loading?'WAIT':bgmOn?'ON':'OFF';
+}
+function startBgm(notify=true){
+ audioInit();
+ const source=$.bgm.getAttribute('data-src')||'./assets/sts-ambient.mp3';
+ if(!$.bgm.getAttribute('src'))$.bgm.setAttribute('src',source);
+ $.bgm.volume=.24;
+ const request=++bgmRequest;
+ setBgmState(false,true);
+ try{
+  const promise=$.bgm.play();
+  Promise.resolve(promise).then(()=>{
+   if(request!==bgmRequest)return;
+   setBgmState(true);
+  }).catch(err=>{
+   if(request!==bgmRequest)return;
+   setBgmState(false);
+   if(notify)showToast('BGM 재생 실패: '+(err?.name==='NotAllowedError'?'브라우저에서 재생 권한을 확인해 주세요.':'음원 파일을 불러오지 못했습니다.'));
+   console.warn('STS BGM:',err);
+  });
+ }catch(err){setBgmState(false);if(notify)showToast('BGM 재생 실패: 음원을 열 수 없습니다.');console.warn('STS BGM:',err)}
+}
+function stopBgm(){
+ ++bgmRequest;$.bgm.pause();setBgmState(false);
+}
+$.bgm.addEventListener('error',()=>{if(!$.bgm.paused){stopBgm();showToast('BGM 파일을 불러오지 못했습니다.')}});
+q('#bgmBtn').addEventListener('click',()=>{
+ if(bgmOn||!$.bgm.paused){bgmExplicitOff=true;stopBgm()}
+ else{bgmExplicitOff=false;startBgm(true)}
+ sound('tap');
+});
+// Mobile browsers forbid autoplay without a gesture. The portal's actual
+// START button is that gesture; play() is invoked synchronously in capture.
+D.addEventListener('click',event=>{
+ if(event.target.closest('[data-sts9-destination]')&&!bgmExplicitOff&&!bgmOn)startBgm(false);
+},true);
 function setActiveStation(id){qa('.station-row').forEach(b=>b.classList.toggle('active',b.dataset.id===id))}
 function inspectorVisual(obj){return `<div class="inspector-visual"><div class="inspect-orbit"></div><div class="inspect-core"></div><div class="inspect-station"></div></div>`}
 const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
