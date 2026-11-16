@@ -19,7 +19,7 @@ const shipInfo={
  fusion:{label:'Fusion transport',kr:'핵융합 수송선',drive:'FUSION / D–³He',time:1,power:3.8,mass:840},
  tug:{label:'Service cutter',kr:'핵융합 지원선 (시연)',drive:'FUSION / AUXILIARY',time:.73,power:1.8,mass:140}
 };
-const state={mode:'sail',vessel:'freighter',scale:1,paused:false,follow:true,ready:false,showBeam:true,sender:null,beamGW:0,energyTJ:0,phase:'STANDBY',activeHours:0,lastPaint:0,final:null};
+const state={mode:'sail',vessel:'freighter',profile:'economy',scale:1,paused:false,follow:true,ready:false,showBeam:true,sender:null,beamGW:0,energyTJ:0,phase:'STANDBY',activeHours:0,lastPaint:0,final:null};
 window.STS_TRAFFIC_V11_STATE=state;
 const modeLabel=m=>m==='fusion'?'INDEPENDENT FUSION CORRIDOR':'STS BEAM NETWORK';
 const sources=V.STATIONS.filter(s=>['ARRAY','RELAY','POWER','HUB'].includes(s.type)&&((s.electric_GWe||0)>.18));
@@ -110,28 +110,33 @@ function deriveFusionNodes(){
 function option(st){return '<option value="'+st.id+'">'+escape(st.id+' / '+st.name+' · '+st.region)+'</option>'}
 const panel=document.createElement('section');panel.id='stsTrafficPanel';panel.className='sts11-panel';
 panel.innerHTML=
- '<div class="sts11-heading"><span>TRAFFIC CONTROL / V12</span><span>REFERENCE / 2120</span></div>'+
+ '<div class="sts11-heading"><span>TRAFFIC CONTROL / V14</span><span>REFERENCE / 2120</span></div>'+
  '<div class="sts11-label">TRANSPORT MODE / 추진 방식</div>'+
  '<div class="sts11-modes" role="group" aria-label="추진 방식"><button data-mode="sail" aria-pressed="true">BEAM-SAIL <small>정거장 송전망</small></button><button data-mode="fusion" aria-pressed="false">FUSION <small>독립 항행 회랑</small></button></div>'+
  '<div class="sts11-label">VESSEL MODEL / 선박 형식</div><div class="sts11-ships" role="group" aria-label="선박 형식">'+
  ['freighter','clipper','fusion','tug'].map(id=>'<button type="button" data-vessel="'+id+'" aria-pressed="'+String(id==='freighter')+'"><strong>'+shipInfo[id].label+'</strong><small>'+shipInfo[id].kr+'</small></button>').join('')+'</div>'+
  '<div class="sts11-fusion" id="stsFusionCorridor" hidden><div class="sts11-label">FUSION CORRIDOR / 독립 운항 구간</div><div class="sts11-fusion-grid"><label>ORIGIN<select id="stsFusionFrom"></select></label><label>DESTINATION<select id="stsFusionTo"></select></label></div><p>기존 송전 간선망을 경유하지 않는 독립 항행 시나리오입니다.</p></div>'+
+ '<div class="sts11-label">TRANSFER STRATEGY / 천이 방식</div><div class="sts11-speed" role="group" aria-label="천이 방식">'+
+ '<button data-orbit-profile="economy" aria-pressed="true">ECONOMY / 최소 에너지</button><button data-orbit-profile="express" aria-pressed="false">POWERED / 단축 운항</button></div>'+
  '<div class="sts11-label">SIMULATION TIME SCALE / 운항 시간 배율</div><div class="sts11-speed" role="group" aria-label="시간 배율">'+
  [1,5,20,100].map(n=>'<button type="button" data-timescale="'+n+'" aria-pressed="'+String(n===1)+'">'+n+'×</button>').join('')+
  '<button type="button" id="sts11Pause" aria-pressed="false">PAUSE</button></div>'+ 
  '<button type="button" class="sts11-follow" id="sts11Follow" aria-pressed="true">CHASE CAMERA / 선박 추적 ON</button>'+
- '<p class="sts11-footnote">시뮬레이션 기준 1× = 실제 1초당 시나리오 2시간. 운항 시간·속도·전력은 설정 기반의 예시 계산값이며 실제 천체력 예측이 아닙니다.</p>'+
+ '<p class="sts11-footnote">1× = 실제 1초당 항행 시간 2시간. NASA의 태양 중심 천이 원리를 적용한 원궤도 근사 계산입니다. 행성 실제 위치·정밀 Lambert 해석·행성별 중력섭동은 포함하지 않습니다.</p>'+
  '<div class="sts11-telemetry" aria-live="off">'+
- '<div><small>SPEED / 속도</small><strong id="sts11Speed">— km/s</strong></div>'+
+ '<div><small>HELIOCENTRIC SPEED / 태양 기준</small><strong id="sts11Speed">— km/s</strong></div>'+
  '<div><small>POWER / 수신·반응로</small><strong id="sts11Power">— GW</strong></div>'+
  '<div><small>ENERGY / 누적</small><strong id="sts11Energy">— TJ</strong></div>'+
  '<div><small>PHASE / 운항 단계</small><strong id="sts11Phase">STANDBY</strong></div>'+
  '<div><small>ETA / 예상 잔여</small><strong id="sts11Eta">—</strong></div>'+
  '<div><small>ELAPSED / 경과 시간</small><strong id="sts11Elapsed">—</strong></div>'+
+ '<div><small>TRANSFER ΔV / 예정 속도변화</small><strong id="sts14Dv">—</strong></div>'+
+ '<div><small>LAUNCH WINDOW / 출항 위상 대기</small><strong id="sts14Window">—</strong></div>'+
  '</div>'+
  '<div class="sts11-beam" id="sts11BeamPanel"><div><span>ACTIVE POWER FEED / 송전 연결</span><strong id="sts11BeamFrom">STANDBY</strong></div><div><span>RECEIVER / 수신 방식</span><strong id="sts11BeamMode">—</strong></div>'+
  '<label><input type="checkbox" id="sts11BeamVisible" checked>지도에 실시간 송전 빔 표시</label></div>'+
- '<div class="sts11-status" id="sts11Status">READY / SELECT VESSEL AND ROUTE</div>';
+ '<div class="sts11-status" id="sts11Status">READY / SELECT VESSEL AND ROUTE</div>'+
+ '<p class="sts11-footnote"><a href="https://science.nasa.gov/learn/basics-of-space-flight/chapter4-1/" target="_blank" rel="noopener">NASA · Basics of Space Flight / Trajectories</a>. 지도상의 행성·정거장 위치는 과장된 개략 좌표입니다.</p>';
 const oldHeading=q('.planner-heading');if(oldHeading)drawer.insertBefore(panel,oldHeading);
 else drawer.appendChild(panel);
 const selFrom=panel.querySelector('#stsFusionFrom'),selTo=panel.querySelector('#stsFusionTo'),fusionOptions=deriveFusionNodes();
@@ -148,7 +153,12 @@ function setMode(mode){
  $('#journeyOptions').style.display=mode==='fusion'?'none':'';
  $('#journeySchedule').style.display=mode==='fusion'?'none':'';
  $('#journeyFind').disabled=mode==='fusion';
- familySelect();
+ panel.querySelectorAll('[data-orbit-profile]').forEach(btn=>btn.addEventListener('click',()=>{
+ state.profile=btn.dataset.orbitProfile;
+ panel.querySelectorAll('[data-orbit-profile]').forEach(x=>x.setAttribute('aria-pressed',String(x===btn)));
+ ui('sts11Status').textContent=state.profile==='economy'?'HOHMANN REFERENCE / LOW ENERGY':'POWERED TRANSFER / HIGHER ENERGY';
+}));
+familySelect();
  ui('sts11BeamPanel').hidden=mode==='fusion';
  ui('sts11Status').textContent=mode==='fusion'?'INDEPENDENT FUSION ROUTING / NO POWER BEAM':'STS BEAM NETWORK / TRANSMITTER TRACKING';
  const a=window.STS_GET_ATLAS?.();
@@ -349,18 +359,18 @@ Atlas.prototype.updateJourney=function(dt){
  }
  const phase=phaseAt(local);state.phase=phase;
  this.shipFlipAngle=local<=.68?0:local<.75?(local-.68)/.07*Math.PI:Math.PI;
- const instantKmS=leg.distanceKm/leg.durationSec*profileVelocity(local);
- j.currentSpeed=instantKmS;
+ // Vis-viva model in the heliocentric frame, not an arbitrary screen pixel speed.
+ j.currentSpeed=leg.orbitalSpeed(local);
+ const thrusting=(phase==='ACCELERATION'||phase==='DECELERATION');
  if(j.preset.mode==='sail'){
-  const beam=transmitter(this.shipPos,leg,j.elapsedSec,this);
+  const beam=thrusting?transmitter(this.shipPos,leg,j.elapsedSec,this):{source:null,type:'OFFLINE',power:0};
   j.activeBeam=beam;state.sender=beam.source;state.beamGW=beam.power;
-  state.beamMode=beam.type;
-  j.energyTJ+=beam.power*step/1000;
+  state.beamMode=thrusting?beam.type:'COAST / NO BEAM';
  }else{
-  state.sender=null;state.beamGW=phase==='MIDCOURSE COAST'?.24:shipInfo[j.preset.vessel].power||3.8;
-  state.beamMode='FUSION DRIVE';
-  j.energyTJ+=state.beamGW*step/1000;
+  state.sender=null;state.beamGW=thrusting?leg.powerGW:.035;
+  state.beamMode=thrusting?'FUSION ELECTRIC THRUST':'REACTOR IDLE / COAST';
  }
+ j.energyTJ+=state.beamGW*step/1000;
  state.energyTJ=j.energyTJ;
  state.activeHours=j.elapsedSec/3600;
  if(this.animClock-state.lastPaint>.22){state.lastPaint=this.animClock;renderTelemetry(this,j,leg,local)}
@@ -382,6 +392,8 @@ function renderTelemetry(atlas,j,leg,t){
  ui('sts11Phase').textContent=state.phase;
  ui('sts11Eta').textContent=duration(secondsLeft);
  ui('sts11Elapsed').textContent=duration(j.elapsedSec);
+ ui('sts14Dv').textContent=format(leg.dvKmS,2)+' km/s · '+leg.kind;
+ ui('sts14Window').textContent=leg.regional?'LOCAL / NO WINDOW':'~'+format(leg.waitDays,0)+' d / PHASE ESTIMATE';
  ui('sts11BeamFrom').textContent=state.sender?state.sender.id+' / '+state.sender.name:'NO POWER FEED / COAST';
  ui('sts11BeamMode').textContent=state.beamMode+(state.sender?' · '+format(state.beamGW,2)+' GW':'');
  ui('sts11Status').textContent=shipInfo[j.preset.vessel].label.toUpperCase()+' / '+modeLabel(j.preset.mode)+' / '+format(100*j.elapsedSec/j.totalSec,1)+'%';
