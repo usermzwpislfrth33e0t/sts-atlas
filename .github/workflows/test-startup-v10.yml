@@ -1,7 +1,7 @@
 name: Test STS V10 Startup and Safari
 on:
   push:
-    paths: [.github/workflows/test-startup-v10.yml]
+    paths: [.github/workflows/test-startup-v10.yml, sts-terminal-v9.js, sts-terminal-v9.css]
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,8 +22,10 @@ jobs:
           assert p.stat().st_size<250000,'HTML should not embed a 5MB music file'
           assert mp3.stat().st_size>4000000
           assert 'data:audio/mpeg;base64' not in src
-          assert 'sts-terminal-v9.js?v=10.0' in src
-          assert 'sts-terminal-v9.css?v=10.0' in src
+          assert 'data-src="./assets/sts-ambient.mp3"' in src
+          assert 'src="./assets/sts-ambient.mp3"' not in src
+          assert 'sts-terminal-v9.js?v=10.1' in src
+          assert 'sts-terminal-v9.css?v=10.1' in src
           PY
       - name: Install mobile WebKit browser
         run: |
@@ -82,7 +84,7 @@ jobs:
               if(done.active!=='atlasView'||done.bootVisible!=='true'||done.titles.length<6||audio.length)
                 throw Error(name+' lost stages, route or audio deferred loading');
               const direct=await ctx.newPage();
-              await direct.goto('http://127.0.0.1:8765/?direct=atlas&v=terminal-10.0',{waitUntil:'domcontentloaded',timeout:45000});
+              await direct.goto('http://127.0.0.1:8765/?direct=atlas&v=terminal-10.1',{waitUntil:'domcontentloaded',timeout:45000});
               await direct.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.direct===true,{timeout:20000});
               console.log('DIRECT_'+name,await direct.locator('.view.active').getAttribute('id'));
               if((await direct.locator('.view.active').getAttribute('id'))!=='atlasView')throw Error('direct view failed');
