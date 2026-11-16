@@ -334,6 +334,42 @@ choose(V.STATION_BY_ID.E03||catalogue[0]);resize();requestAnimationFrame(frame);
 window.STS_STATIONYARD_READY=true;
 window.STS_STATIONYARD_SELECT=(id)=>{const record=V.STATION_BY_ID[id];if(record)choose(record)};
 
+const registry=document.getElementById('registryGrid');
+if(registry){
+ const installActions=()=>{
+  const cards=[...registry.children].filter(c=>c.matches?.('.registry-card'));
+  for(const card of cards){
+    const st=V.STATION_BY_ID[card.dataset.id];if(!st)continue;
+    const shell=document.createElement('div');shell.className='stationyard-card-shell';
+    registry.insertBefore(shell,card);shell.appendChild(card);
+    const button=document.createElement('button');button.type='button';button.className='stationyard-card-open';
+    button.textContent='3D MODEL ↗';button.setAttribute('aria-label',st.name+' 3D 설계 보기');
+    button.addEventListener('click',ev=>{ev.stopPropagation();choose(st);section.scrollIntoView({behavior:'smooth',block:'start'})});
+    shell.appendChild(button);
+  }
+ };
+ new MutationObserver(installActions).observe(registry,{childList:true});
+ installActions();
+}
+const inspector=document.getElementById('inspector'),detailID=document.getElementById('detailID');
+if(inspector&&detailID){
+ const attachInspectorAction=()=>{
+  const id=detailID.textContent.trim(),st=V.STATION_BY_ID[id];
+  if(!st||inspector.querySelector('.stationyard-inspector-open'))return;
+  const btn=document.createElement('button');btn.type='button';btn.className='stationyard-inspector-open';
+  btn.textContent='VIEW 3D STATION MODEL  ↗';
+  btn.addEventListener('click',()=>{
+   choose(st);
+   const nav=document.querySelector('[data-view="facilities"]');if(nav)nav.click();
+   section.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  inspector.appendChild(btn);
+ };
+ new MutationObserver(attachInspectorAction).observe(inspector,{childList:true});
+ attachInspectorAction();
+}
+
+
 /* Map model replacement: pooled, screen-space LOD. Never instantiate Three.js on atlas WebGL. */
 const atlas=V.Atlas3D;
 if(atlas?.prototype){
