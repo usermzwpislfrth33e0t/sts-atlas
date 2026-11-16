@@ -205,8 +205,8 @@ function catcher(){
      const rr=Math.min(R-.38,r+.73);
      beam(frame,pt(r,-.2,-1.55),pt(rr,.2,-1.55),.035,'alloy',6);
      beam(frame,pt(r,.2,-1.55),pt(rr,-.2,-1.55),.035,'alloy',6);
-     beam(frame,pt(r,-.2,-1.55),pt(r,.2,-1.55),.040,'steel',7);
-     beam(frame,pt(r,0,-1.50),pt(r,0,-1.12),.042,'steel',7);
+     beam(frame,pt(r,-.2,-1.55),pt(r,.2,-1.55),.040,'alloy',7);
+     beam(frame,pt(r,0,-1.50),pt(r,0,-1.12),.042,'alloy',7);
    }
    beam(frame,pt(1.2,0,-1.55),pt(R-.25,0,-1.18),.038,'gold',8);
    for(let r=2;r<R;r+=1.35)box(frame,pt(r,0,-1.06),[.32,.22,.22],'dark').rotation.z=a;
