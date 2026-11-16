@@ -432,6 +432,10 @@ ui('journeyStart').addEventListener('click',event=>{
  }
  if(!preset){ui('sts11Status').textContent='SELECT TWO DIFFERENT FUSION NODES';return}
  atlas.showJourney(preset);
+ // On phones the lower inspector occupies 42% of the map viewport and hides
+ // the camera-centered ship. Collapse it during flight, preserving the
+ // existing manual panel toggle for station inspection.
+ if(window.innerWidth<890)$('#atlasView')?.classList.add('panel-min');
  ui('journeyState').textContent='DEPARTURE AUTHORIZED / '+shipInfo[state.vessel].label;
  ui('sts11Status').textContent=modeLabel(state.mode)+' / SIMULATION ACTIVE';
 },true);
