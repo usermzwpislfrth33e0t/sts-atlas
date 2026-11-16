@@ -1,7 +1,7 @@
 name: Visual test STS Terminal V9
 on:
   push:
-    paths: [.github/workflows/test-terminal-v9.yml]
+    paths: [.github/workflows/test-terminal-v9.yml, sts-terminal-v9.js, sts-terminal-v9.css]
   workflow_dispatch:
 permissions:
   contents: read
@@ -94,6 +94,17 @@ jobs:
               nativeBoot:document.querySelector('#boot').className,customBoot:document.querySelector('#sts9BootOverlay').className,
               state:window.STS_TERMINAL_V9_STATE}))));
             await capture(sp,'webkit-portal-after','#app');
+            const direct=await safari.newPage();
+            direct.on('pageerror',e=>wkErrors.push('direct '+(e.stack||e.message)));
+            await direct.goto('http://127.0.0.1:8765/?direct=atlas&v=terminal-9.1',{waitUntil:'domcontentloaded',timeout:50000});
+            await direct.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.direct===true,{timeout:20000});
+            console.log('WEBKIT_DIRECT',JSON.stringify(await direct.evaluate(()=>({
+              active:document.querySelector('.view.active')?.id,
+              app:document.querySelector('#app').className,
+              portalDisplay:document.querySelector('#portal').style.display,
+              state:window.STS_TERMINAL_V9_STATE}))));
+            if((await direct.locator('.view.active').getAttribute('id'))!=='atlasView')throw Error('direct mobile recovery failed');
+            await direct.close();
             console.log('WEBKIT_ERRORS',JSON.stringify(wkErrors));await wk.close();
             console.log('JS_ERRORS',JSON.stringify(errors));
             await browser.close();
