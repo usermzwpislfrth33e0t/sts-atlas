@@ -58,12 +58,12 @@ jobs:
               source = source.replace('</body></html>', script + '\n</body></html>', 1)
               index.write_text(source, encoding='utf-8')
           source = source.replace('shipyard-v5.css?v=5.2', 'shipyard-v5.css?v=8.1')
-          source = source.replace('shipyard-v5.js?v=5.2', 'shipyard-v5.js?v=12.0')
+          source = source.replace('shipyard-v5.js?v=5.2', 'shipyard-v5.js?v=13.0')
           source = source.replace('shipyard-v5.css?v=7.1', 'shipyard-v5.css?v=8.1')
-          source = source.replace('shipyard-v5.js?v=7.1', 'shipyard-v5.js?v=12.0')
+          source = source.replace('shipyard-v5.js?v=7.1', 'shipyard-v5.js?v=13.0')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
-          assert 'shipyard-v5.js?v=12.0' in source and 'shipyard-v5.css?v=8.1' in source
+          assert 'shipyard-v5.js?v=13.0' in source and 'shipyard-v5.css?v=8.1' in source
           station_css = '<link rel="stylesheet" href="./stationyard-v1.css?v=12.0">'
           station_js = '<script type="module" src="./stationyard-v1.js?v=12.0"></script>'
           if 'stationyard-v1.css' not in source:
@@ -112,8 +112,8 @@ jobs:
           assert guarded in source
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
-          source=source.replace('sts-traffic-v11.js?v=11.0','sts-traffic-v11.js?v=12.0')
-          source=source.replace('sts-traffic-v11.js?v=11.1','sts-traffic-v11.js?v=12.0')
+          source=source.replace('sts-traffic-v11.js?v=11.0','sts-traffic-v11.js?v=13.0')
+          source=source.replace('sts-traffic-v11.js?v=11.1','sts-traffic-v11.js?v=13.0')
           source=source.replace('sts-traffic-v11.css?v=11.1','sts-traffic-v11.css?v=12.0')
           source=source.replace('sts-traffic-v11.css?v=11.0','sts-traffic-v11.css?v=12.0')
           if index.read_text(encoding='utf-8') != source:
@@ -134,7 +134,7 @@ jobs:
           test -s stationyard-v1.css
           node --check sts-traffic-v11.js
           test -s sts-traffic-v11.css
-          grep -q 'sts-traffic-v11.js?v=12.0' index.html
+          grep -q 'sts-traffic-v11.js?v=13.0' index.html
           grep -q 'stationyard-v1.js?v=12.0' index.html
           test -s vendor/three.module.js
           node --check stationyard.bundle.js
