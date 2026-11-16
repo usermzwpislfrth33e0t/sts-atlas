@@ -1,5 +1,6 @@
 /* STS / Canonical reference 2120. This text follows the project design document. */
 (()=>{'use strict';
+document.title='STS / Solar Traffic System — Navigation Atlas 2120';
 const $=q=>document.querySelector(q);
 const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const header=(num,title,desc)=>'<div class="sts-doc-eyebrow">'+num+'</div><h3>'+title+'</h3><p>'+desc+'</p>';
