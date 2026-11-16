@@ -119,6 +119,7 @@ if(Atlas3D){
   // when a planet occludes the WebGL model, or at solar-system camera distances.
   const originalOverlay=Atlas3D.prototype.renderOverlay;
   Atlas3D.prototype.renderOverlay=function(){
+    if(window.STS_TRAFFIC_V11_READY)return originalOverlay.call(this);
     originalOverlay.call(this);
     if(!this.shipPos||!this.basis)return;
     const point=this.project(this.shipPos,this.basis);
@@ -177,5 +178,5 @@ if(Atlas3D){
     c.restore();
   };
 }
-import('./shipyard-v7.bundle.js?v=8.1').catch(err=>console.error('STS Shipyard WebGL load failed:',err));
+import('./shipyard-v7.js?v=11.0').catch(err=>console.error('STS Shipyard WebGL load failed:',err));
 })();
