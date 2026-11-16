@@ -298,11 +298,12 @@ Atlas.prototype.updateJourney=function(dt){
  this.shipPos=sample(leg.points,p);
  this.shipDir=unit(sub(b,a));
  if(state.follow){
-   // Track the ship in scaled space; keep the camera outside enlarged planets.
-   const k=clamp(dt*(this.speed>5?17:10),0,1);
+   // Exact tracking prevents large camera/ship lag at 20-100x.
+   // World model size remains fixed rather than scaling with the screen.
    this.camera.destTarget=this.shipPos.slice();
-   this.camera.target=interp(this.camera.target,this.shipPos,k);
-   this.camera.destDist=15*U;
+   this.camera.target=this.shipPos.slice();
+   this.camera.destDist=7.2*U;
+   this.camera.dist+=(this.camera.destDist-this.camera.dist)*clamp(dt*9,0,1);
  }
  const phase=phaseAt(local);state.phase=phase;
  this.shipFlipAngle=local<=.68?0:local<.75?(local-.68)/.07*Math.PI:Math.PI;
@@ -367,6 +368,17 @@ Atlas.prototype.renderGL=function(){
   const route=j.legs[j.leg]||j.legs[0];
   if(route){const line=updateGpuLine(this,'route',route.points);this.drawLine(line,'#deb892',.64,1)}
  }
+ // The thruster plume is anchored at the rear of the chosen engineering model.
+ // During the 180-degree brake flip the engines are shut off; the resulting
+ // reverse heading makes retro-burn visible along the travel direction.
+ if(j&&this.stsShipAxes&&(state.phase==='ACCELERATION'||state.phase==='DECELERATION')){
+   const kind=j.preset.vessel||state.vessel,axis=this.stsShipAxes[2],sz=this.stsShipWorldScale||.35;
+   const engineZ=kind==='fusion'?8.8:kind==='clipper'?4.91:4.41;
+   const origin=vec(this.shipPos,mul(axis,-engineZ*sz));
+   const exhaust=mul(axis,-(state.phase==='DECELERATION'?2.45:1.8));
+   const tracer=updateGpuLine(this,'engine',[origin,vec(origin,exhaust)]);
+   this.drawLine(tracer,kind==='fusion'?'#9cdcff':'#94d6ec',.72,1);
+ }
  if(j?.preset?.mode==='sail'&&state.showBeam&&j.activeBeam?.source){
   const source=j.activeBeam.source,laser=j.activeBeam.type.startsWith('LASER');
   const line=updateGpuLine(this,'line',[source.xyz,this.shipPos]);
@@ -384,10 +396,7 @@ Atlas.prototype.renderOverlay=function(){
  c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);
  const fusion=this.activeJourney?.preset?.mode==='fusion';
  const txt=fusion?'FUSION VESSEL / IN TRANSIT':'BEAM SAIL / IN TRANSIT';
- // Erase the previous Atlas label first; the old text is wider than ours
- // and otherwise leaves stray letters after the updated mode label.
- const oldX=Math.min(w-180,ship.x+10),oldY=Math.max(35,ship.y-18);
- c.fillStyle='#071524f3';c.fillRect(oldX-6,oldY-15,215,23);
+ // Ship mode label is now unique; the base Atlas draws only the locator circle.
  const labelX=clamp(ship.x+20,8,Math.max(8,w-195)),labelY=clamp(ship.y-18,30,h-55);
  c.font='10px ui-monospace,monospace';const tw=Math.min(185,c.measureText(txt).width+16);
  c.fillStyle='#071524ea';c.fillRect(labelX-5,labelY-13,tw,18);
