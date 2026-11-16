@@ -252,48 +252,75 @@ for(const satellite of BODIES){
   if(ANCHOR_BODY[st.anchor]===satellite.id)st.xyz=add(st.xyz,delta);
  }
 }
-// A route around a planet is an orbital arc, not a straight line piercing
-// its surface. This is still a schematic network, not a physical ephemeris.
+// V14 orbital cartography. A straight cubic Bezier, followed by local
+// point-by-point collision pushes, made giant loops and sharp polyline corners.
+// Local links now follow monotone orbital arcs; interregional traffic follows
+// bounded heliocentric radial transfers, with broad tangent clearance bends.
+// Display coordinates and oversized planet models are SCHEMATIC, not ephemeris.
 const routeObstacles=BODIES.filter(b=>b.type==='STAR'||b.type==='PLANET'||b.id==='LUNA');
-function orbitalArc(a,b,body,steps=52){
- const from=sub(a,body.xyz),to=sub(b,body.xyz),ra=len(from),rb=len(to);
- const u=norm(from),v=norm(to),cosTheta=clamp(dot(u,v),-1,1);
- const theta=Math.acos(cosTheta),side=sub(v,mul(u,cosTheta));
- let tangent=norm(side);
- if(len(side)<.00001){
-  tangent=norm(cross(u,Math.abs(u[1])<.83?[0,1,0]:[1,0,0]));
- }
- const pts=[];
+const turnAngle=(a,b)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
+function orbitalArc(a,b,body,steps=64){
+ const A=sub(a,body.xyz),B=sub(b,body.xyz),ra=len(A),rb=len(B);
+ const u=norm(A),v=norm(B),theta=Math.acos(clamp(dot(u,v),-1,1));
+ let tangent=sub(v,mul(u,Math.cos(theta)));
+ if(len(tangent)<1e-4)tangent=cross(u,Math.abs(u[1])<.83?[0,1,0]:[1,0,0]);
+ tangent=norm(tangent);
+ const pts=[],floor=body.size+1.65*ATLAS_UNITS;
  for(let i=0;i<=steps;i++){
   const t=i/steps,angle=theta*t;
-  const direction=norm(add(mul(u,Math.cos(angle)),mul(tangent,Math.sin(angle))));
-  const r=ra*(1-t)+rb*t+Math.sin(Math.PI*t)*2*ATLAS_UNITS;
-  pts.push(add(body.xyz,mul(direction,Math.max(r,body.size+2*ATLAS_UNITS))));
+  const d=norm(add(mul(u,Math.cos(angle)),mul(tangent,Math.sin(angle))));
+  const radial=Math.max(floor,ra*(1-t)+rb*t);
+  pts.push(add(body.xyz,mul(d,radial)));
  }
- pts[0]=a.slice();pts[pts.length-1]=b.slice();return pts;
+ pts[0]=a.slice();pts[steps]=b.slice();return pts;
+}
+function transferArc(a,b,steps=72){
+ const ra=Math.hypot(a[0],a[2]),rb=Math.hypot(b[0],b[2]);
+ const aa=Math.atan2(a[2],a[0]),ab=Math.atan2(b[2],b[0]);
+ const delta=turnAngle(aa,ab),pts=[];
+ // A monotonic low-thrust orbital transfer projection: the radius does not
+ // overshoot and the solar longitude never reverses or doubles back.
+ for(let i=0;i<=steps;i++){
+  const t=i/steps,q=t*t*(3-2*t),theta=aa+delta*t;
+  const r=ra+(rb-ra)*q;
+  pts.push([Math.cos(theta)*r,a[1]*(1-t)+b[1]*t,Math.sin(theta)*r]);
+ }
+ pts[0]=a.slice();pts[steps]=b.slice();return pts;
 }
 function safeRoutePoints(route){
- const a=route.a.xyz,b=route.b.xyz,major=({Earth:LOOK.EARTH,Luna:MOON,Mars:LOOK.MARS})[route.a.region];
- const nearHost=major&&route.a.region===route.b.region&&
-    len(sub(a,major.xyz))<major.size*3.5&&len(sub(b,major.xyz))<major.size*3.5;
- let pts=nearHost?orbitalArc(a,b,major):curvePoints(a,b,52);
- // Iterative clearance + smoothing of interregional curves, preventing the
- // expanded celestial spheres from swallowing or intersecting traffic links.
- for(let iteration=0;iteration<7;iteration++){
-  const next=pts.map(p=>p.slice());
-  for(let i=1;i<pts.length-1;i++){
-   let p=nearHost?pts[i].slice():lerp(pts[i],lerp(pts[i-1],pts[i+1],.5),.16);
-   for(const body of routeObstacles){
-    const diff=sub(p,body.xyz),r=len(diff),clearance=body.size+1.5*ATLAS_UNITS;
-    if(r>=clearance)continue;
-    const fallback=norm(cross(sub(b,a),[0,1,0]));
-    p=add(body.xyz,mul(norm(r>.01?diff:fallback),clearance));
+ const a=route.a.xyz,b=route.b.xyz,pair=[route.a.region,route.b.region];
+ let host=route.a.region===route.b.region?
+   ({Earth:LOOK.EARTH,Luna:MOON,Mars:LOOK.MARS})[route.a.region]:null;
+ // The Earth-Luna corridor stays within the terrestrial Hill-region schematic.
+ if(pair.includes('Earth')&&pair.includes('Luna'))host=LOOK.EARTH;
+ let pts=host?orbitalArc(a,b,host):transferArc(a,b);
+ const total=len(sub(b,a)),count=pts.length;
+ // Wide, smooth avoidance bends do not introduce local cusp / jitter.
+ // Never perturb departure/arrival: those belong to selected docking nodes.
+ for(let pass=0;pass<5;pass++){
+  let moved=false;
+  for(const body of routeObstacles){
+   let worst=0,at=-1;
+   for(let i=1;i<count-1;i++){
+    const dist=len(sub(pts[i],body.xyz)),clearance=body.size+1.2*ATLAS_UNITS;
+    if(clearance-dist>worst){worst=clearance-dist;at=i}
    }
-   next[i]=p;
+   if(at<0||worst<=.005)continue;
+   moved=true;const t0=at/(count-1),near=pts[at];
+   const outward=norm(sub(near,body.xyz));
+   const normal=len(outward)>1e-5?outward:norm(cross(sub(b,a),[0,1,0]));
+   const width=clamp((body.size+3*ATLAS_UNITS)/Math.max(total,4*ATLAS_UNITS)*1.55,.15,.52);
+   for(let i=1;i<count-1;i++){
+    const t=i/(count-1),u=Math.abs(t-t0)/width;
+    if(u>=1)continue;
+    const weight=Math.pow(.5+.5*Math.cos(u*Math.PI),2)*Math.sin(Math.PI*t);
+    pts[i]=add(pts[i],mul(normal,(worst+1.3*ATLAS_UNITS)*weight*1.55));
+   }
   }
-  pts=next;
+  if(!moved)break;
  }
- pts[0]=a.slice();pts[pts.length-1]=b.slice();return pts;
+ pts[0]=a.slice();pts[count-1]=b.slice();
+ return pts;
 }
 for(const r of ROUTES)r.points=safeRoutePoints(r);
 const ADJ=new Map();for(const r of ROUTES){for(const [x,y] of [[r.from,r.to],[r.to,r.from]]){if(!ADJ.has(x))ADJ.set(x,[]);ADJ.get(x).push({next:y,route:r})}}
