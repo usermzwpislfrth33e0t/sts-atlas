@@ -177,32 +177,74 @@ ui('sts11Pause').addEventListener('click',()=>{
  ui('sts11Pause').setAttribute('aria-pressed',String(state.paused));
  ui('sts11Pause').textContent=state.paused?'RESUME':'PAUSE';
 });
-const AU_KM=149597870.7;
-const regionAU={Earth:1,Luna:1.003,Mars:1.52,Belt:2.7,Helio:2.2,Jupiter:5.2,Saturn:9.54};
-function distanceKm(from,to){
- if(from.region===to.region)return Math.max(12000,length(sub(from.xyz,to.xyz))/U*12000);
- const pair=[from.region,to.region];
- if(pair.includes('Earth')&&pair.includes('Luna'))return 384400;
- if(pair.includes('Mars')&&pair.includes('Earth'))return 78000000;
- if(pair.includes('Mars')&&pair.includes('Luna'))return 79000000;
- if(pair.includes('Helio'))return Math.max(.1,Math.abs((regionAU[from.region]||2)-(regionAU[to.region]||2)))*AU_KM;
- return Math.max(.15,Math.abs((regionAU[from.region]||2)-(regionAU[to.region]||2)))*AU_KM;
+// V14 · NASA two-body transfer reference. Circular orbits / mean elements.
+// These are not ephemeris-driven Lambert solutions or full n-body propagation.
+const AU_KM=149597870.7,MU_SUN=1.32712440018e11,DAY=86400,TAU_ORBIT=2*Math.PI;
+const regionAU={Earth:1,Luna:1,Mars:1.524,Belt:2.77,Helio:2.2,Jupiter:5.204,Saturn:9.58};
+const mod=(a,m)=>((a%m)+m)%m;
+function orbitAU(st){
+ return st.region==='Helio'?clamp(Math.hypot(st.xyz[0],st.xyz[2])/(27*U),1.05,5.1):(regionAU[st.region]||2.2);
 }
-function hoursForLeg(a,b,mode,vessel){
- const pair=[a.region,b.region],days=mode==='fusion'
-  ?(pair.includes('Saturn')?128:pair.includes('Jupiter')?86:pair.includes('Belt')?57:pair.includes('Mars')?43:pair.includes('Luna')?1.1:0.65)
-  :(pair.includes('Saturn')?205:pair.includes('Jupiter')?130:pair.includes('Belt')?72:pair.includes('Mars')?125:pair.includes('Luna')?2.8:1.5);
- if(a.region===b.region)return clamp(12+length(sub(a.xyz,b.xyz))/U*1.3,12,100)*shipInfo[vessel].time;
- return days*24*shipInfo[vessel].time;
+function eccentricRadius(x,t){
+ const a=(x.r1+x.r2)*.5,e=Math.abs(x.r1-x.r2)/(x.r1+x.r2);
+ const M=(x.r2>=x.r1?0:Math.PI)+Math.PI*clamp(t,0,1);
+ let E=M;for(let i=0;i<8;i++)E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+ return a*(1-e*Math.cos(E));
+}
+function referenceTransfer(from,to){
+ const r1=orbitAU(from)*AU_KM,r2=orbitAU(to)*AU_KM,semi=(r1+r2)/2;
+ const hohmannSec=Math.PI*Math.sqrt(semi**3/MU_SUN);
+ const vc1=Math.sqrt(MU_SUN/r1),vc2=Math.sqrt(MU_SUN/r2);
+ const vt1=Math.sqrt(MU_SUN*(2/r1-1/semi)),vt2=Math.sqrt(MU_SUN*(2/r2-1/semi));
+ const dvKmS=Math.abs(vt1-vc1)+Math.abs(vt2-vc2);
+ const n1=Math.sqrt(MU_SUN/r1**3),n2=Math.sqrt(MU_SUN/r2**3);
+ const start=Math.atan2(from.xyz[2],from.xyz[0]),end=Math.atan2(to.xyz[2],to.xyz[0]);
+ const phase=mod(Math.PI-n2*hohmannSec-(end-start),TAU_ORBIT),omega=n2-n1;
+ const synodic=Math.abs(omega)>1e-13?TAU_ORBIT/Math.abs(omega):0;
+ const waitDays=synodic?mod((omega<0?phase-TAU_ORBIT:phase)/omega,synodic)/DAY:0;
+ const res={r1,r2,semi,hohmannSec,dvKmS,waitDays};
+ let prev=null,distanceKm=0;
+ const ecc=Math.abs(r2-r1)/(r2+r1);
+ for(let i=0;i<=120;i++){
+  const t=i/120,r=eccentricRadius(res,t),E=(r2>=r1?0:Math.PI)+Math.PI*t;
+  const nu=Math.atan2(Math.sqrt(1-ecc*ecc)*Math.sin(E),Math.cos(E)-ecc);
+  const p=[r*Math.cos(nu),r*Math.sin(nu)];
+  if(prev)distanceKm+=Math.hypot(p[0]-prev[0],p[1]-prev[1]);prev=p;
+ }
+ return {...res,distanceKm};
+}
+function transferPlan(from,to,mode,vessel,profile=state.profile){
+ const info=shipInfo[vessel]||shipInfo.fusion;
+ const same=from.region===to.region,earthMoon=['Earth','Luna'].includes(from.region)&&['Earth','Luna'].includes(to.region);
+ if(same||earthMoon){
+  const scale={Earth:12000,Luna:7000,Mars:10000,Belt:145000,Jupiter:95000,Saturn:95000,Helio:100000};
+  const km=earthMoon&&!same?384400:Math.max(8000,length(sub(from.xyz,to.xyz))/U*(scale[from.region]||13000));
+  const v=mode==='fusion'?2.8:vessel==='clipper'?2.3:1.15;
+  const hours=Math.max(earthMoon&&!same?(mode==='fusion'?24:48):8,km/v/3600);
+  return {regional:true,distanceKm:km,durationSec:hours*3600,dvKmS:mode==='fusion'?3.2:1.5,
+   waitDays:0,powerGW:.2,orbitalSpeed:()=>v,kind:'LOCAL ORBITAL TRANSFER',factor:1};
+ }
+ const ref=referenceTransfer(from,to);
+ const factor=profile==='economy'?1:mode==='fusion'?.62:vessel==='clipper'?.58:.78;
+ const durationSec=ref.hohmannSec*factor,dvKmS=ref.dvKmS*(1+(1-factor)*1.9);
+ // Electrical jet energy estimate: E=0.5*m*v_exhaust*delta-v/efficiency.
+ const ve=mode==='fusion'?800000:420000,eff=mode==='fusion'?.62:.66;
+ const joules=.5*info.mass*1000*dvKmS*1000*ve/eff;
+ const requiredGW=joules/(durationSec*.34)/1e9;
+ return {...ref,regional:false,durationSec,dvKmS,
+  kind:profile==='economy'?'HOHMANN REFERENCE':'POWERED TRANSFER ENVELOPE',factor,
+  powerGW:clamp(requiredGW,.06,info.power||7.2),
+  orbitalSpeed(t){
+   const r=eccentricRadius(ref,t);
+   return Math.sqrt(MU_SUN*(2/r-1/ref.semi))/factor;
+  }};
 }
 function pathFromPoints(from,to,mode){
- const route=mode==='sail'?routes.find(r=>r.from===from.id&&r.to===to.id||r.from===to.id&&r.to===from.id):null;
- if(route?.points?.length){const points=route.from===from.id?route.points:route.points.slice().reverse();return points.map(p=>p.slice())}
- const a=from.xyz,b=to.xyz,d=sub(b,a);
- const bend=mode==='fusion'?clamp(length(d)*.045,.15*U,5*U):clamp(length(d)*.09,.12*U,4*U);
- const off=unit(cross(unit(d),[0,1,0]));const pp=[];
- for(let i=0;i<=80;i++){const t=i/80;pp.push(vec(interp(a,b,t),mul(off,bend*Math.sin(Math.PI*t))))}
- return pp;
+ const route=mode==='sail'?routes.find(r=>
+   (r.from===from.id&&r.to===to.id)||(r.from===to.id&&r.to===from.id)):null;
+ if(route?.points?.length)
+   return (route.from===from.id?route.points:route.points.slice().reverse()).map(p=>p.slice());
+ return V.safeRoutePoints({a:from,b:to});
 }
 function sample(points,t){
  const at=clamp(t,0,1)*(points.length-1),i=Math.min(points.length-2,Math.floor(at)),f=at-i;
@@ -249,8 +291,8 @@ function makeLegs(preset){
  const nodes=preset.nodes,legs=[];
  for(let i=0;i<nodes.length-1;i++){
   const a=V.resolve(nodes[i]),b=V.resolve(nodes[i+1]);if(!a||!b)continue;
-  legs.push({from:a,to:b,points:pathFromPoints(a,b,preset.mode),distanceKm:distanceKm(a,b),
-   durationSec:hoursForLeg(a,b,preset.mode,preset.vessel)*3600});
+  const physics=transferPlan(a,b,preset.mode,preset.vessel);
+  legs.push({...physics,from:a,to:b,points:pathFromPoints(a,b,preset.mode)});
  }
  return legs;
 }
