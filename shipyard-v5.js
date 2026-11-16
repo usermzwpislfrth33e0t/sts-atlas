@@ -67,7 +67,7 @@ vp.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;vp.se
 vp.addEventListener('pointermove',e=>{if(!state.drag.has(e.pointerId))return;const before=state.drag.get(e.pointerId);const now={x:e.clientX,y:e.clientY};state.drag.set(e.pointerId,now);if(state.drag.size===1){state.yaw+=((now.x-before.x)/Math.max(250,vp.clientWidth))*Math.PI*1.7;state.pitch=clamp(state.pitch+(now.y-before.y)/Math.max(250,vp.clientHeight)*Math.PI, -.96,1.16)}else if(state.drag.size===2){const others=[...state.drag.entries()].filter(([k])=>k!==e.pointerId);const d1=Math.hypot(before.x-others[0][1].x,before.y-others[0][1].y),d2=Math.hypot(now.x-others[0][1].x,now.y-others[0][1].y);if(d1>10)state.zoom=clamp(state.zoom*d2/d1,.55,2.45)}state.dirty=true});
 for(const n of ['pointerup','pointercancel','lostpointercapture'])vp.addEventListener(n,e=>{state.drag.delete(e.pointerId);if(!state.drag.size)vp.classList.remove('dragging')});
 vp.addEventListener('wheel',e=>{e.preventDefault();state.zoom=clamp(state.zoom*(e.deltaY>0?.91:1.09),.55,2.45);state.dirty=true},{passive:false});
-let lastFrame=0;function tick(t){requestAnimationFrame(tick);if(document.hidden||!host.classList.contains('active')||!state.mesh)return;if(t-lastFrame<48)return;const dt=Math.min((t-lastFrame)/1000,.08);lastFrame=t;if(state.auto){state.yaw+=dt*.11;state.dirty=true}const target=state.explode?1:0;if(Math.abs(target-state.explodeT)>.002){state.explodeT+=(target-state.explodeT)*Math.min(1,dt*7);state.dirty=true}if(!state.dirty)return;paint();state.dirty=false}
+let lastFrame=0;function tick(t){if(window.STS_SHIPYARD_V7_READY)return;requestAnimationFrame(tick);if(document.hidden||!host.classList.contains('active')||!state.mesh)return;if(t-lastFrame<48)return;const dt=Math.min((t-lastFrame)/1000,.08);lastFrame=t;if(state.auto){state.yaw+=dt*.11;state.dirty=true}const target=state.explode?1:0;if(Math.abs(target-state.explodeT)>.002){state.explodeT+=(target-state.explodeT)*Math.min(1,dt*7);state.dirty=true}if(!state.dirty)return;paint();state.dirty=false}
 selectModel('freighter');resize();requestAnimationFrame(tick);
 // Atlas connection: model scale follows projected pixels rather than arbitrary world units.
 const Atlas3D=window.STS3D?.Atlas3D;
@@ -167,4 +167,5 @@ if(Atlas3D){
     c.restore();
   };
 }
+import('./shipyard-v7.js?v=7.0').catch(err=>console.error('STS Shipyard WebGL load failed:',err));
 })();
