@@ -1,7 +1,7 @@
-name: Live STS Traffic V11.1 integration test
+name: Live STS Traffic V12 integration test
 on:
   push:
-    paths: [.github/workflows/check-live-traffic.yml]
+    paths: [.github/workflows/check-live-traffic.yml, index.html]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,12 +14,12 @@ jobs:
         run: |
           base=https://usermzwpislfrth33e0t.github.io/sts-atlas
           for n in $(seq 1 15); do
-            curl -Lsf --max-time 30 "$base/?v=traffic-11.1" -o /tmp/sts-site || true
-            if grep -q 'sts-traffic-v11.js?v=11.1' /tmp/sts-site; then break; fi
+            curl -Lsf --max-time 30 "$base/?v=traffic-12.0" -o /tmp/sts-site || true
+            if grep -q 'sts-traffic-v11.js?v=12.0' /tmp/sts-site; then break; fi
             sleep 3
           done
           echo "LIVE_HTML_BYTES $(wc -c </tmp/sts-site)"
-          grep -q 'sts-traffic-v11.js?v=11.1' /tmp/sts-site
+          grep -q 'sts-traffic-v11.js?v=12.0' /tmp/sts-site
           for asset in sts-traffic-v11.js sts-traffic-v11.css shipyard-v7.js stationyard-v1.js vendor/three.module.js; do
             code=$(curl -L --connect-timeout 12 --max-time 35 -s -o /tmp/sts-asset -w '%{http_code}' "$base/$asset?v=11.1")
             echo "LIVE_ASSET $asset HTTP_$code BYTES_$(wc -c </tmp/sts-asset)"
@@ -37,7 +37,7 @@ jobs:
             const errors=[];
             page.on('pageerror',e=>errors.push(e.stack||e.message));
             page.on('response',r=>{if(r.status()>=400)errors.push('HTTP '+r.status()+' '+r.url())});
-            const response=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/?direct=atlas&v=traffic-11.1',{waitUntil:'domcontentloaded',timeout:65000});
+            const response=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/?direct=atlas&v=traffic-12.0',{waitUntil:'domcontentloaded',timeout:65000});
             await page.waitForFunction(()=>window.STS_TRAFFIC_V11_READY&&window.STS_GET_ATLAS?.()&&window.STS_STATIONYARD_EXPORT_MODEL&&window.STS_SHIPYARD_EXPORT_MODEL,{timeout:40000});
             console.log('LIVE_READY',JSON.stringify(await page.evaluate(()=>({atlas:document.querySelector('.view.active')?.id,stationCount:STS3D.STATIONS.length,diagnostics:window.STS_TRAFFIC_V11_DIAGNOSTICS()}))));
             await page.locator('#openJourneyBtn').click();
