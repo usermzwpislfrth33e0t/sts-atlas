@@ -1,0 +1,99 @@
+name: Verify STS V11 shared model and traffic simulations
+on:
+  push:
+    paths: [.github/workflows/test-traffic-v11.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source and shared models
+        run: |
+          node --check sts-traffic-v11.js
+          node --check shipyard-v7.js
+          node --check stationyard-v1.js
+          grep -q 'sts-traffic-v11.js?v=11.0' index.html
+          grep -q 'stationyard-v1.js?v=11.0' index.html
+          grep -q 'shipyard-v7.js?v=11.0' shipyard-v5.js
+      - name: Browser simulation tests (mobile & desktop)
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 >/tmp/sts-v11-test.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            const test=async(width,height)=>{
+              const errors=[],responses=[];
+              const page=await browser.newPage({viewport:{width,height},isMobile:width<700,hasTouch:width<700,deviceScaleFactor:1});
+              page.on('pageerror',e=>errors.push(e.stack||e.message));
+              page.on('response',r=>{if(r.status()>=400)responses.push('HTTP '+r.status()+' '+r.url())});
+              await page.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-11.0',{waitUntil:'domcontentloaded',timeout:50000});
+              await page.waitForFunction(()=>window.STS_TRAFFIC_V11_READY===true&&window.STS_SHIPYARD_V7_READY===true&&window.STS_STATIONYARD_READY===true&&!!window.STS_GET_ATLAS?.()&&!!window.STS_SHIPYARD_EXPORT_MODEL&&!!window.STS_STATIONYARD_EXPORT_MODEL,{timeout:40000});
+              await page.waitForTimeout(850);
+              const ready=await page.evaluate(()=>({
+                diag:window.STS_TRAFFIC_V11_DIAGNOSTICS(),view:document.querySelector('.view.active')?.id,
+                routePanel:!!document.querySelector('#stsTrafficPanel'),modelExport:typeof window.STS_SHIPYARD_EXPORT_MODEL,
+                facilityModel:typeof window.STS_STATIONYARD_EXPORT_MODEL,
+                routeCount:STS3D.ROUTES.length,stationCount:STS3D.STATIONS.length,
+                atlasGL:!!window.STS_GET_ATLAS().gl,
+                selectedStationType:STS3D.STATION_BY_ID.L07?.type
+              }));
+              console.log('READY_'+width,JSON.stringify(ready));
+              if(ready.view!=='atlasView'||!ready.routePanel)throw Error('Missing atlas or V11 control surface');
+              await page.evaluate(()=>{
+                const atlas=window.STS_GET_ATLAS();
+                const st=STS3D.STATION_BY_ID.L07||STS3D.STATION_BY_ID.E03;
+                atlas.focusObject(st);atlas.camera.dist=10;atlas.camera.destDist=10;
+                if(atlas.gl){atlas.basis=atlas.cameraBasis();atlas.drawStation(st)}
+              });
+              console.log('STATION_'+width,JSON.stringify(await page.evaluate(()=>window.STS_TRAFFIC_V11_DIAGNOSTICS())));
+              await page.locator('#openJourneyBtn').click();
+              await page.locator('[data-vessel="clipper"]').click();
+              await page.locator('#journeyStart').click();
+              await page.waitForTimeout(900);
+              const sail=await page.evaluate(()=>({
+                diag:window.STS_TRAFFIC_V11_DIAGNOSTICS(),active:window.STS_GET_ATLAS().activeJourney?.preset,
+                pos:window.STS_GET_ATLAS().shipPos,power:document.getElementById('sts11Power').textContent,
+                speed:document.getElementById('sts11Speed').textContent,
+                sender:document.getElementById('sts11BeamFrom').textContent
+              }));
+              console.log('SAIL_'+width,JSON.stringify(sail));
+              if(!sail.diag.journey||sail.diag.vessel!=='clipper'||!sail.diag.shipModels.some(m=>m.id==='clipper'&&m.triangles>1000))
+                throw Error('Detailed clipper geometry not rendered');
+              if(!sail.diag.source)throw Error('Sail is not receiving a visible beam transmitter');
+              await page.locator('#journeyStop').click();
+              await page.locator('[data-mode="fusion"]').click();
+              await page.locator('[data-vessel="fusion"]').click();
+              await page.locator('[data-timescale="20"]').click();
+              await page.locator('#journeyStart').click();
+              await page.waitForTimeout(900);
+              const fusion=await page.evaluate(()=>({
+                diag:window.STS_TRAFFIC_V11_DIAGNOSTICS(),preset:window.STS_GET_ATLAS().activeJourney?.preset,
+                speed:document.getElementById('sts11Speed').textContent,
+                power:document.getElementById('sts11Power').textContent,
+                energy:document.getElementById('sts11Energy').textContent,
+                elapsed:document.getElementById('sts11Elapsed').textContent,
+                gamma:window.STS_GET_ATLAS().shipFlipAngle,
+                source:document.getElementById('sts11BeamPanel').hidden
+              }));
+              console.log('FUSION_'+width,JSON.stringify(fusion));
+              if(!fusion.diag.journey||fusion.diag.mode!=='fusion'||fusion.diag.scale!==20||
+                !fusion.diag.shipModels.some(m=>m.id==='fusion'&&m.triangles>1000)||
+                !fusion.preset.mode||fusion.preset.mode!=='fusion'||!fusion.source)
+                throw Error('Fusion independent corridor or detailed ship model failed');
+              await page.locator('#sts11Pause').click();const old=await page.evaluate(()=>window.STS_GET_ATLAS().activeJourney.elapsedSec);
+              await page.waitForTimeout(350);const current=await page.evaluate(()=>window.STS_GET_ATLAS().activeJourney.elapsedSec);
+              console.log('PAUSE_'+width,JSON.stringify({before:old,after:current}));
+              if(current!==old)throw Error('Pause did not halt simulation time');
+              console.log('ERRORS_'+width,JSON.stringify(errors.concat(responses)));
+              if(errors.length||responses.length)throw Error('Browser runtime errors');
+              await page.close();
+            };
+            await test(1100,860);await test(390,844);
+            await browser.close();
+          })().catch(e=>{console.error('TEST_FAIL',e);process.exit(1)});
+          JS
