@@ -377,10 +377,13 @@ if(atlas?.prototype){
   if(!this.useWebGL||!this.gl)return;
   const p=this.project(st.xyz,this.basis);if(!p)return;
   const x=st.xyz,dist=this.camera.dist,selected=this.selected?.id===st.id;
-  const scale=Math.max(.22,Math.min(2.1,16/Math.max(1,p.scale)));
-  const near=selected||dist<44&&p.scale>.8;
-  const medium=near||dist<100&&p.scale>.30;
-  const k=scale*(selected?1.18:1);
+  // Only the focused station receives an enlarged detailed model.
+  // Other nearby facilities remain compact, preventing orbital clusters
+  // from obscuring each other or the parent planet.
+  const px=selected?18:(dist<62?2.8:6);
+  const k=Math.max(selected?.16:.045,Math.min(selected?1.4:.52,px/Math.max(1,p.scale)));
+  const near=selected&&dist<145;
+  const medium=near||dist>=62&&dist<115&&p.scale>.36;
   const center=(a,b,c)=>[x[0]+a*k,x[1]+b*k,x[2]+c*k];
   const draw=(shape,a,b,c,s,color,emi=.48,alpha=1)=>this.drawMesh(this[shape],center(a,b,c),s.map(t=>t*k),color,alpha,emi);
   const primary=selected?'#dceefa':'#9db8c9',dark='#667f90',blue='#8cc3d9',accent='#d0b582';
