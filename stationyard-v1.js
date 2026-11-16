@@ -101,7 +101,12 @@ function beacon(g,p){tube(g,[p[0],p[1],p[2]],[p[0],p[1]+.47,p[2]],.025,'frame',7
 function lattice(g,z0,z1,r=.6,steps=6){const P=[[-r,-r],[r,-r],[r,r],[-r,r]];for(const [x,y] of P)beam(g,[x,y,z0],[x,y,z1],.052,'alloy');
 for(let i=0;i<steps;i++){let a=z0+(z1-z0)*i/steps,b=z0+(z1-z0)*(i+1)/steps;for(let j=0;j<4;j++){const A=P[j],B=P[(j+1)%4];beam(g,[A[0],A[1],a],[B[0],B[1],a],.038,'frame');beam(g,[A[0],A[1],a],[B[0],B[1],b],.028,'frame')}}}
 function port(g,p,R=.36,mat='gold',axis='z'){let rr=ring(g,R,.045,p[2],mat,24);rr.position.x=p[0];rr.position.y=p[1];if(axis==='x')rr.rotation.y=Math.PI/2;return rr}
-function pressure(g,a,b,R=.67,mat='white'){tube(g,[0,0,a],[0,0,b],R,mat,20);for(let z=a+.27;z<b;z+=.75){ring(g,R+.022,.032,z,'frame',24)}for(let z=a+.45;z<b-.25;z+=1.1){for(const s of [-1,1])box(g,[s*R*.95,0,z],[.07,.22,.34],'glass')}}
+function pressure(g,a,b,R=.67,mat='white'){tube(g,[0,0,a],[0,0,b],R,mat,20);
+ for(let z=a+.27;z<b;z+=.75){ring(g,R+.025,.034,z,'frame',24)}
+ for(let z=a+.45;z<b-.25;z+=1.1){for(const s of [-1,1])box(g,[s*R*.99,0,z],[.09,.22,.42],'glass')}
+ for(let z=a+.24;z<b-.17;z+=.6){for(let j=0;j<8;j++){const t=j*Math.PI/4;const x=Math.cos(t)*(R+.026),y=Math.sin(t)*(R+.026);
+ const shield=box(g,[x,y,z],[.18,.047,.37],j%3===0?'alloy':j%2===0?'white':'frame');shield.rotation.z=t;
+ if(j%4===0)box(g,[x*1.018,y*1.018,z],[.08,.055,.18],'dark')}}}
 function panels(g,xCenter,zCenter,span=4,length=3,y=0){
  for(let s of [-1,1]){const w=span*.44,x=xCenter+s*(span*.26+.38);const slab=box(g,[x,y,zCenter],[w,.035,length],'solar');
  for(let j=0;j<5;j++){let xx=x-w*.5+j*w/4;beam(g,[xx,y+.037,zCenter-length*.48],[xx,y+.037,zCenter+length*.48],.018,'blue',5)}
@@ -111,16 +116,27 @@ function panels(g,xCenter,zCenter,span=4,length=3,y=0){
 function tanks(g,baseZ=4,number=6,r=0.38){for(let i=0;i<number;i++){const side=i%2?-1:1,layer=Math.floor(i/2),x=side*(.9+layer*.62),y=-.72-(i%3)*.12;const z=baseZ+(layer%2)*.7;
  tube(g,[x,y,z-.85],[x,y,z+.85],r,'white',14);for(const zz of [-.6,.55]){const t=ring(g,r+.03,.05,z+zz,'gold',18);t.position.x=x;t.position.y=y}box(g,[x,y+r,z],[.38,.11,.65],'dark')}}
 function dockingArms(g,zs=[-1.5,1.5,4.5]){for(const z of zs)for(const s of [-1,1]){let y=s*1.25;beam(g,[0,s*.54,z],[0,y,z],.15,'frame');
-box(g,[0,y,z],[2.65,.27,.43],'alloy');box(g,[0,y+s*.15,z],[2.25,.06,.31],'white');for(const x of [-1.15,1.15]){box(g,[x,y,z],[.34,.47,.55],'ceramic');beacon(g,[x,y+.25,z])}for(const x of [-.8,.8])port(g,[x,y,z+.24],.18,'blue')}}
+ box(g,[0,y,z],[2.65,.27,.43],'alloy');box(g,[0,y+s*.15,z],[2.25,.06,.31],'white');
+ for(const x of [-1.15,1.15]){box(g,[x,y,z],[.34,.47,.55],'ceramic');beacon(g,[x,y+.25,z]);box(g,[x,y+s*.13,z+.31],[.27,.15,.08],'glass')}
+ for(const x of [-.8,.8]){port(g,[x,y,z+.24],.18,'blue');box(g,[x,y+s*.11,z],[.30,.075,.12],'hazard')}
+ for(let x=-1.06;x<1.14;x+=.35){beam(g,[x,y+.21,z-.17],[x,y+.21,z+.17],.022,'frame',6)}
+ }}
 function trussBox(g,x0,x1,y0,y1,z0,z1){const corners=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];for(const [x,y] of corners)beam(g,[x,y,z0],[x,y,z1],.075,'frame');for(const z of [z0,z1])for(let i=0;i<4;i++){let a=corners[i],b=corners[(i+1)%4];beam(g,[...a,z],[...b,z],.072,'alloy')}for(let i=0;i<4;i++){let a=corners[i],b=corners[(i+1)%4];beam(g,[...a,z0],[...b,z1],.042,'frame')}}
-function dish(g,p,R=1.05,tilt=0){const curve=[];for(let i=0;i<=12;i++){const r=R*i/12;curve.push(new THREE.Vector2(r,-.27+.3*(r/R)**2))}
-const geom=new THREE.LatheGeometry(curve,28);const m=add(g,geom,'white',p,[tilt,0,.35]);const axis=V3(Math.sin(.35),Math.cos(.35),0);beam(g,[p[0],p[1]-.10,p[2]],[p[0],p[1]+R*.73,p[2]],.045,'frame');orb(g,[p[0],p[1]+R*.73,p[2]],.12,'light');return m}
+function dish(g,p,R=1.05,tilt=0){const curve=[];for(let i=0;i<=16;i++){const r=R*i/16;curve.push(new THREE.Vector2(r,-.32+.34*(r/R)**2))}
+ const geom=new THREE.LatheGeometry(curve,48);const m=add(g,geom,'alloy',p,[tilt,0,.35]);
+ const rim=new THREE.Mesh(new THREE.TorusGeometry(R,.034,6,48),material.ceramic.clone());
+ rim.rotation.x=Math.PI/2;rim.position.set(p[0],p[1]+.01,p[2]);rim.userData.part=g.userData.part;g.add(rim);
+ for(let k=0;k<12;k++){const a=k*Math.PI/6,rr=R*.90;beam(g,[p[0],p[1]-.28,p[2]],[p[0]+Math.cos(a)*rr,p[1],p[2]+Math.sin(a)*rr],.015,'frame',5)}
+ beam(g,[p[0],p[1]-.12,p[2]],[p[0],p[1]+R*.70,p[2]],.045,'frame');orb(g,[p[0],p[1]+R*.70,p[2]],.11,'light');return m}
 function controlPod(g,p=[0,0,0],size=1){box(g,p,[1.7*size,.8*size,1.25*size],'ceramic');box(g,[p[0],p[1]+.25*size,p[2]+.3*size],[1.54*size,.30*size,.18*size],'glass');
 for(const x of [-.7,.7])beacon(g,[p[0]+x*size,p[1]+.48*size,p[2]])}
-function segmentedRing(g,R,z,mat='white'){ring(g,R,.28,z,mat,64);ring(g,R-.27,.055,z,'gold',64);
-for(let i=0;i<16;i++){const a=i*2*Math.PI/16,x=Math.cos(a)*R,y=Math.sin(a)*R;
-const p=box(g,[x,y,z],[.65,.35,.74],i%4===0?'ceramic':'frame');p.rotation.z=a+Math.PI*.5;
-if(i%2===0)orb(g,[x*1.03,y*1.03,z+.43],.065,'light');}}
+function segmentedRing(g,R,z,mat='white'){ring(g,R,.27,z,mat,64);ring(g,R-.27,.055,z,'gold',64);
+ for(let i=0;i<24;i++){const a=i*2*Math.PI/24,x=Math.cos(a)*R,y=Math.sin(a)*R;
+ const p=box(g,[x,y,z],[.55,.31,.69],i%4===0?'ceramic':i%3===0?'alloy':'frame');p.rotation.z=a+Math.PI*.5;
+ const rr=box(g,[x*1.063,y*1.063,z+.17],[.20,.045,.40],i%5===0?'hazard':'dark');rr.rotation.z=a+Math.PI*.5;
+ if(i%2===0)orb(g,[x*1.04,y*1.04,z+.42],.055,i%6===0?'amber':'light');
+ if(i%3===0){beam(g,[Math.cos(a)*R,Math.sin(a)*R,z-.38],[Math.cos(a)*R,Math.sin(a)*R,z+.39],.045,'gold',7)}
+ }}
 function hub(){const ringG=part('ring'),spine=part('spine'),berths=part('berths'),service=part('services');
 segmentedRing(ringG,4.0,-4.5,'white');segmentedRing(ringG,3.75,-4.9,'frame');
 for(let i=0;i<12;i++){const a=i*2*Math.PI/12;beam(ringG,[0,0,-4.5],[Math.cos(a)*3.8,Math.sin(a)*3.8,-4.5],.07,'frame')}
@@ -193,6 +209,61 @@ for(const s of [-1,1])for(const y of [-1,1]){let x=s*1.5,yy=y*1.1;tube(tanksG,[x
 for(const z of [-4,0,4.3])for(const s of [-1,1]){beam(docks,[s*.7,0,z],[s*3.15,0,z],.11,'alloy');box(docks,[s*3.15,0,z],[.65,.85,.85],'ceramic');const p=port(docks,[s*3.15,0,z+.45],.33,'blue');beacon(docks,[s*3.15,.5,z])}
 panels(rad,0,5.0,6.8,2.5,-1.7);for(const x of [-.95,.95])tube(rad,[x,.8,4.0],[x,.8,5.9],.22,'frame');
 return {core:[0,1.2,-3],tanks:[-1.5,1.1,-1.0],docks:[3.15,.0,0],radiators:[3,-1.7,5]}}
+
+function paintMark(g,text,p=[-.91,.21,0],width=1.3,height=.41){
+ const cnv=document.createElement('canvas');cnv.width=512;cnv.height=160;const c=cnv.getContext('2d');
+ if(!c)return;c.clearRect(0,0,512,160);
+ c.fillStyle='#f0f3f3';c.font='bold 51px ui-monospace,monospace';c.fillText('STS  /  '+text,13,93);
+ c.fillStyle='#91bace';c.fillRect(13,109,280,6);c.fillStyle='#dfe9ee';c.font='26px ui-monospace,monospace';c.fillText('INFRASTRUCTURE · 2120',13,145);
+ const texture=new THREE.CanvasTexture(cnv);texture.colorSpace=THREE.SRGBColorSpace;
+ const mat=new THREE.MeshStandardMaterial({map:texture,transparent:true,side:THREE.DoubleSide,emissive:0x18202a,emissiveIntensity:.2,roughness:.66,depthWrite:false});
+ const model=new THREE.Mesh(new THREE.PlaneGeometry(width,height),mat);model.position.set(...p);model.rotation.y=-Math.PI/2;model.userData.part=g.userData.part;g.add(model);
+}
+function braceBridge(g,r,z0,z1){for(let s of [-1,1])for(let t of [-1,1]){
+ const x=s*r,y=t*r;beam(g,[x,y,z0],[x,y,z1],.07,'frame');
+ for(let i=0;i<4;i++){const a=z0+(z1-z0)*i/4,b=z0+(z1-z0)*(i+1)/4;
+ beam(g,[x,y,a],[-x,y,b],.024,'gold',6)}
+}}
+function finishStation(ty,record){
+ const first=profile[ty][4][0][0],g=parts[first];if(!g)return;
+ const marked=parts[ty==='YARD'?'industry':ty==='RELAY'?'core':ty==='ARRAY'?'power':ty==='SAFETY'?'control':ty==='CATCHER'?'control':ty==='POWER'?'support':ty==='SERVICE'?'core':ty==='TERMINAL'?'concourse':'spine'];
+ if(marked)paintMark(marked,record.id,[-.89,.30,ty==='YARD'?-4.0:ty==='ARRAY'?7:ty==='RELAY'?1.9:ty==='CATCHER'?5.4:ty==='POWER'?5:1.8],1.1,.33);
+ if(ty==='YARD'){
+  const D=parts.dock,G=parts.gantry;
+  for(const x of [-3.6,3.6])for(const y of [-2.35,2.35])for(let z=1;z<9;z+=1.25){
+   beam(D,[x,y,z],[x,y>0?y-.50:y+.50,z+1.25],.036,'frame');}
+  for(let z=1.25;z<9;z+=.80){for(const x of [-3.1,3.1]){box(D,[x,-2.35,z],[.37,.11,.32],'dark');box(D,[x,-2.27,z],[.13,.06,.24],'hazard')}}
+  for(const z of [2.1,5.3,8.2]){for(let x=-3;x<=3;x+=1.2){box(G,[x,2.82,z],[.25,.10,.45],'frame')}}
+ }
+ if(ty==='ARRAY'){const E=parts.emitters;
+  for(const z of [-.6,.9,2.4,3.9,5.4])for(const s of [-1,1])for(const y of [-1.15,1.15]){
+    box(E,[s*2.1,y,z+.10],[.78,.10,.43],'glass');
+    for(let i=-1;i<=1;i++)box(E,[s*2.1+i*.22,y+(y>0?.17:-.17),z+.13],[.1,.025,.36],'light');
+  }}
+ if(ty==='SAFETY'){const R=parts.rescue,C=parts.control;
+  for(const s of [-1,1]){box(R,[2.95,-.95,s*1.1],[.12,.63,.84],'dark');
+   for(let z=-.25;z<.3;z+=.14)box(R,[3.04,-.70,s*1.1+z],[.035,.1,.08],'hazard')}
+  for(let z=-2;z<2.2;z+=.55){box(C,[0,1.08,z],[.32,.10,.23],'glass')}
+  const S=parts.sensors;for(const a of [0,Math.PI/2,Math.PI,1.5*Math.PI]){
+   const x=Math.cos(a)*3.3,y=Math.sin(a)*3.3;
+   box(S,[x,y,1.07],[.72,.14,.45],'solar').rotation.z=a;}
+ }
+ if(ty==='CATCHER'){const C=parts.capture;
+  for(let i=0;i<16;i++){const a=i*Math.PI/8,x=Math.cos(a)*2.6,y=Math.sin(a)*2.6;
+    beam(C,[x,y,-.98],[-x*.58,-y*.58,-.97],.021,i%3===0?'hazard':'frame',5)}
+  for(let z of [-1.7,-2.5,-3.2])for(let x of [-1.2,1.2]){box(C,[x,-.4,z],[.38,.15,.48],'hazard')}}
+ if(ty==='POWER'){const R=parts.reactor;for(let z=-4.7;z<1.4;z+=.72){for(let a=0;a<8;a++){
+  const t=a*Math.PI/4,x=Math.cos(t)*1.06,y=Math.sin(t)*1.06;
+  box(R,[x,y,z],[.18,.06,.29],a%2?'dark':'gold').rotation.z=t}}}
+ if(ty==='RELAY'){const A=parts.arrays;for(let z=6;z<8;z+=.36)for(let y of [-1.5,1.5]){
+  beam(A,[-4.1,y+.06,z],[4.1,y+.06,z],.02,'frame',6)}}
+ if(ty==='HUB'||ty==='TERMINAL'){const G=parts[ty==='HUB'?'services':'utilities'];
+ for(let i=0;i<8;i++){const t=i*Math.PI/4;const x=Math.cos(t)*.9,y=Math.sin(t)*.9;
+  box(G,[x,y,7.5],[.16,.11,.58],'dark').rotation.z=t}}
+ if(ty==='SERVICE'){const T=parts.tanks;for(let x of [-1.5,1.5])for(let y of [-1.1,1.1])for(let z=-3.2;z<=1.2;z+=1.1){
+  box(T,[x,y+.51,z],[.33,.055,.27],'dark');}}
+}
+
 const builders={HUB:hub,TERMINAL:terminal,YARD:yard,RELAY:relay,ARRAY:array,SAFETY:safety,CATCHER:catcher,POWER:power,SERVICE:service};
 function refreshAppearance(){for(const [key,g] of Object.entries(parts))g.traverse(o=>{if(!o.isMesh)return;const m=o.material;if(!m.userData.base)m.userData.base=m.emissive.clone();
  m.emissive.copy(m.userData.base);if(key===selected)m.emissive.add(new THREE.Color(0x12354c));m.wireframe=state.wire;m.needsUpdate=true});state.dirty=true}
@@ -212,7 +283,7 @@ function choose(st){
  $('#stationyardPins').innerHTML=cl[4].map(p=>'<button type="button" class="shipyard-pin" data-part="'+p[0]+'" aria-label="'+esc(p[1])+' 선택" title="'+esc(p[1])+'" aria-pressed="false"></button>').join('');
  $$('#stationyardParts button, #stationyardPins button').forEach(b=>b.addEventListener('click',()=>choosePart(b.dataset.part)));
  while(main.children.length){const old=main.children[0];main.remove(old);old.traverse(o=>{o.geometry?.dispose();o.material?.dispose()})}
- root=new THREE.Group();main.add(root);parts={};anchors=builders[st.type]?.()||service();
+ root=new THREE.Group();main.add(root);parts={};anchors=builders[st.type]?.()||service();finishStation(st.type,st);
  const scale=Math.max(.85,Math.min(1.22,.85+Math.log10(Math.max(200,st.mass_t||15000))/18));root.scale.setScalar(scale);
  state.dist=st.type==='YARD'?34:st.type==='ARRAY'?31:st.type==='HUB'?31:st.type==='TERMINAL'?30:st.type==='RELAY'?29:27;state.targetDist=state.dist;
  state.yaw=-.66;state.pitch=.27;state.explode=false;$('#stationyardExplode').setAttribute('aria-pressed','false');
