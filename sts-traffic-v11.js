@@ -116,7 +116,7 @@ panel.innerHTML=
  '<div class="sts11-label">VESSEL MODEL / 선박 형식</div><div class="sts11-ships" role="group" aria-label="선박 형식">'+
  ['freighter','clipper','fusion','tug'].map(id=>'<button type="button" data-vessel="'+id+'" aria-pressed="'+String(id==='freighter')+'"><strong>'+shipInfo[id].label+'</strong><small>'+shipInfo[id].kr+'</small></button>').join('')+'</div>'+
  '<div class="sts11-fusion" id="stsFusionCorridor" hidden><div class="sts11-label">FUSION CORRIDOR / 독립 운항 구간</div><div class="sts11-fusion-grid"><label>ORIGIN<select id="stsFusionFrom"></select></label><label>DESTINATION<select id="stsFusionTo"></select></label></div><p>기존 송전 간선망을 경유하지 않는 독립 항행 시나리오입니다.</p></div>'+
- '<div class="sts11-label">TRANSFER STRATEGY / 천이 방식</div><div class="sts11-speed" role="group" aria-label="천이 방식">'+
+ '<div class="sts11-label">TRANSFER STRATEGY / 천이 방식</div><div class="sts11-strategies" role="group" aria-label="천이 방식">'+
  '<button data-orbit-profile="economy" aria-pressed="true">ECONOMY / 최소 에너지</button><button data-orbit-profile="express" aria-pressed="false">POWERED / 단축 운항</button></div>'+
  '<div class="sts11-label">SIMULATION TIME SCALE / 운항 시간 배율</div><div class="sts11-speed" role="group" aria-label="시간 배율">'+
  [1,5,20,100].map(n=>'<button type="button" data-timescale="'+n+'" aria-pressed="'+String(n===1)+'">'+n+'×</button>').join('')+
