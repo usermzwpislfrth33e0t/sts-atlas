@@ -407,5 +407,26 @@ ui('journeyStop').addEventListener('click',()=>{
 });
 ui('journeySpeed').hidden=true;
 familySelect();
+const selectedStationDraw=Atlas.prototype.drawStation;
+let bridgeCheck=0;
+const ensureStationBridge=()=>{
+ if(window.STS_STATIONYARD_EXPORT_MODEL){
+   if(Atlas.prototype.drawStation!==selectedStationDraw){
+     // The station module is asynchronous; its atlas LOD override may land
+     // after this script. Keep the final draw method on the geometry bridge.
+     Atlas.prototype.drawStation=selectedStationDraw;
+   }
+ }else if(bridgeCheck++<60)setTimeout(ensureStationBridge,100);
+};
+ensureStationBridge();
+window.STS_TRAFFIC_V11_DIAGNOSTICS=()=>{
+ const atlas=window.STS_GET_ATLAS?.(),cache=atlas?cacheFor(atlas):null;
+ return {mode:state.mode,vessel:state.vessel,source:state.sender?.id||null,
+   beamGW:state.beamGW,phase:state.phase,scale:state.scale,
+   shipModels:cache?[...cache.ship.entries()].map(([id,d])=>({id,triangles:d.triangles,parts:d.parts.length})):[],
+   stationModels:cache?[...cache.station.entries()].map(([id,d])=>({id,triangles:d.triangles,parts:d.parts.length})):[],
+   journey:!!atlas?.activeJourney,stationBridge:Atlas.prototype.drawStation===selectedStationDraw,
+   shipFactory:!!window.STS_SHIPYARD_EXPORT_MODEL,stationFactory:!!window.STS_STATIONYARD_EXPORT_MODEL};
+};
 window.STS_TRAFFIC_V11_READY=true;
 })();
