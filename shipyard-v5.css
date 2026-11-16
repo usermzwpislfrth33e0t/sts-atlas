@@ -1,0 +1,60 @@
+/* STS Shipyard / architecture study 05 — self-contained, no third-party renderer */
+#vesselsView.shipyard-view{padding-bottom:80px}
+.shipyard-headline{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin:0 0 25px}
+.shipyard-headline p{margin:0;max-width:610px;font-size:13px;color:#9caab7;line-height:1.85}
+.shipyard-label{font:10px ui-monospace,Menlo,monospace;color:#88a9bf;letter-spacing:1.55px}
+.shipyard-label strong{font-weight:500;color:#d0e4f2}
+.shipyard-console{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,.75fr);background:#090e14;border:1px solid #35404d;min-height:590px;overflow:hidden}
+.shipyard-main{min-width:0;display:flex;flex-direction:column;border-right:1px solid #303b48}
+.shipyard-modelstrip{display:flex;align-items:stretch;overflow-x:auto;border-bottom:1px solid #35404d;scrollbar-width:thin;scrollbar-color:#3a566b transparent}
+.shipyard-model{flex:1 0 130px;min-width:130px;border:0;border-right:1px solid #263441;background:#0a121a;color:#899ba8;text-align:left;padding:17px 15px 16px;transition:background .2s,color .2s;position:relative}
+.shipyard-model[aria-pressed="true"]{background:#182b3b;color:#e8f6ff}
+.shipyard-model[aria-pressed="true"]:after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:#a2d5f2}
+.shipyard-model:hover{background:#142231}
+.shipyard-model small{display:block;font:9px ui-monospace,Menlo,monospace;letter-spacing:1px;opacity:.66;margin-bottom:6px}
+.shipyard-model strong{display:block;font-size:12px;font-weight:500;white-space:nowrap}
+.shipyard-viewport{height:clamp(370px,47vw,585px);position:relative;background:radial-gradient(ellipse 60% 65% at 50% 43%,#162432 0%,#0d151e 52%,#070c11 100%);overflow:hidden;touch-action:none;cursor:grab;user-select:none}
+.shipyard-viewport.dragging{cursor:grabbing}
+.shipyard-viewport canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.shipyard-viewport:after{content:'';position:absolute;inset:16px;border:1px solid #ffffff10;pointer-events:none}
+.shipyard-sensor{position:absolute;left:30px;top:29px;display:flex;gap:11px;flex-direction:column;pointer-events:none}
+.shipyard-sensor span{font:10px ui-monospace,Menlo,monospace;letter-spacing:1.2px;color:#92b3ca}
+.shipyard-sensor b{font:9px ui-monospace,Menlo,monospace;letter-spacing:.9px;color:#6f8799;font-weight:400}
+.shipyard-sensor i{display:inline-block;width:5px;height:5px;background:#9fdbf5;border-radius:50%;box-shadow:0 0 12px #a6d3f8aa;margin-right:9px}
+.shipyard-coordinates{position:absolute;left:30px;bottom:29px;font:10px ui-monospace,Menlo,monospace;letter-spacing:.7px;color:#7090a6;pointer-events:none}
+.shipyard-axes{position:absolute;right:32px;bottom:26px;font:9px ui-monospace,Menlo,monospace;color:#7095b1;letter-spacing:1px;text-align:right;pointer-events:none}
+.shipyard-watermark{position:absolute;right:30px;top:28px;font:10px ui-monospace,Menlo,monospace;letter-spacing:1.8px;color:#7f96a7;pointer-events:none}
+.shipyard-pin{position:absolute;z-index:2;left:0;top:0;transform:translate(-50%,-50%);border:1px solid #b5dff6;width:18px;height:18px;background:#0c1e2aca;border-radius:50%;padding:0;display:grid;place-items:center;box-shadow:0 0 15px #a0c5e430;color:transparent}
+.shipyard-pin:before{content:'';width:4px;height:4px;background:#c7ebff;border-radius:50%}
+.shipyard-pin[aria-pressed="true"]{background:#8ac4ec;border-color:#e5f7ff;box-shadow:0 0 18px #9fd6ff80}
+.shipyard-pin[aria-pressed="true"]:before{background:#08202f}
+.shipyard-pin:hover{background:#577e98}
+.shipyard-toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;padding:13px 17px;border-top:1px solid #293642;background:#0b131b}
+.shipyard-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.shipyard-tool{border:1px solid #3a4d5c;background:#111d28;color:#9eafbd;font:10px ui-monospace,Menlo,monospace;padding:10px 11px;min-width:35px;letter-spacing:.35px;white-space:nowrap}
+.shipyard-tool:hover,.shipyard-tool[aria-pressed="true"]{color:#e2f4ff;border-color:#719dbc;background:#20354a}
+.shipyard-readout{font:10px ui-monospace,Menlo,monospace;color:#7296ae;letter-spacing:.8px}
+.shipyard-sidebar{display:flex;flex-direction:column;min-width:0;background:linear-gradient(175deg,#0f1822,#0a1017)}
+.shipyard-sidebar-top{padding:27px 25px 20px;border-bottom:1px solid #30404b}
+.shipyard-series{font:10px ui-monospace,Menlo,monospace;letter-spacing:1.4px;color:#91b5cb}
+.shipyard-sidebar h3{font-size:29px;line-height:1.12;font-weight:520;letter-spacing:-.8px;margin:16px 0 13px;color:#e4edf4}
+.shipyard-sidebar p{font-size:12px;line-height:1.8;color:#a2b1be;margin:0}
+.shipyard-specs{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;padding:8px 25px 14px}
+.shipyard-specs div{border-bottom:1px solid #263540;padding:13px 0;min-width:0}
+.shipyard-specs small{display:block;font:9px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#6e8ca2;margin-bottom:7px}
+.shipyard-specs strong{font-size:12px;color:#d4e2ed;font-weight:500;line-height:1.45}
+.shipyard-parts{padding:14px 25px 10px;display:flex;flex-direction:column;gap:3px}
+.shipyard-parts-title{font:10px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#83a7bd;padding:10px 0}
+.shipyard-part{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;border:1px solid transparent;background:transparent;padding:10px 10px;color:#a3b5c3;font-size:12px}
+.shipyard-part:after{content:'↗';font:12px ui-monospace,Menlo,monospace;color:#678ba4}
+.shipyard-part[aria-pressed="true"]{border-color:#557f9a;background:#1b3040;color:#e5f4fd}
+.shipyard-part:hover{background:#152430;color:#fff}
+.shipyard-part span{min-width:0}
+.shipyard-part em{font:9px ui-monospace,Menlo,monospace;color:#668aa1;letter-spacing:1px;margin-right:10px;font-style:normal}
+.shipyard-part-note{margin:auto 25px 25px;border-top:1px solid #425361;padding-top:15px;min-height:75px}
+.shipyard-part-note b{display:block;color:#a9d5ed;font:10px ui-monospace,Menlo,monospace;letter-spacing:.8px;margin-bottom:8px}
+.shipyard-part-note p{font-size:11px;line-height:1.7;color:#91a8bb}
+.shipyard-fineprint{display:flex;justify-content:space-between;gap:30px;margin-top:12px;font:9px ui-monospace,Menlo,monospace;color:#6e8292;letter-spacing:.7px;line-height:1.8}
+@media(max-width:1100px){.shipyard-console{grid-template-columns:1fr}.shipyard-main{border-right:0;border-bottom:1px solid #344757}.shipyard-sidebar{display:grid;grid-template-columns:1fr 1fr}.shipyard-sidebar-top{border-right:1px solid #263540}.shipyard-specs{grid-column:2;grid-row:1}.shipyard-parts{grid-column:1/3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.shipyard-parts-title{grid-column:1/3}.shipyard-part-note{grid-column:1/3;margin:10px 25px 20px}}
+@media(max-width:700px){.shipyard-headline{display:block}.shipyard-headline .shipyard-label{display:block;margin-top:15px}.shipyard-console{margin:0 -6px}.shipyard-model{flex-basis:136px;padding:12px 11px}.shipyard-model strong{font-size:11px}.shipyard-viewport{height:350px}.shipyard-sensor{left:17px;top:21px}.shipyard-watermark{right:16px;top:21px;font-size:8px}.shipyard-coordinates{left:17px;bottom:17px;font-size:8px}.shipyard-axes{right:16px;bottom:16px;font-size:8px}.shipyard-toolbar{padding:11px}.shipyard-tool{padding:9px 8px}.shipyard-readout{width:100%}.shipyard-sidebar{display:flex}.shipyard-sidebar-top{padding:20px 19px;border-right:0}.shipyard-sidebar h3{font-size:25px}.shipyard-specs{padding:4px 19px 15px}.shipyard-parts{display:flex;padding:8px 19px}.shipyard-part-note{margin:8px 19px 20px}.shipyard-fineprint{display:block}.shipyard-fineprint span{display:block}}
+@media(prefers-reduced-motion:reduce){.shipyard-model,.shipyard-tool{transition:none}}
