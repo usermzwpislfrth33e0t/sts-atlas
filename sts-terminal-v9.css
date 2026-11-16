@@ -123,3 +123,8 @@
 }
 @media(max-height:700px) and (max-width:700px){.sts9-stage{padding-top:22px}.sts9-title{font-size:43px;margin:17px 0}.sts9-scope{min-height:230px}.sts9-boot-display{min-height:190px}.sts9-boot-map{min-height:125px}}
 @media(prefers-reduced-motion:reduce){.sts9-portal *,.sts9-boot *{animation:none!important;transition:none!important}.sts9-lit::before{opacity:1}.sts9-console-cursor{opacity:1}}
+
+/* Reliable mobile input and optional direct entry path */
+.sts9-action{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.sts9-direct-link{display:inline-flex;align-items:center;padding:10px 1px;margin:13px 0 0;border-bottom:1px solid #49677b;color:#9bbfd5;font:10px ui-monospace,Menlo,monospace;letter-spacing:.7px;text-decoration:none;min-height:38px;touch-action:manipulation}
+.sts9-direct-link:hover,.sts9-direct-link:focus-visible{color:#deeff9;border-color:#b5d6e8}
