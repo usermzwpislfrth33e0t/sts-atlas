@@ -1,0 +1,57 @@
+name: Verify STS V11 iPhone Safari WebKit
+on:
+  push:
+    paths: [.github/workflows/test-traffic-webkit.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ios-engine:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare browser
+        run: |
+          npm install --no-save playwright@1.57.0
+          npx playwright install --with-deps webkit
+      - name: Test simulator mobile WebKit engine
+        run: |
+          python3 -m http.server 8765 >/tmp/sts-webkit.log 2>&1 &
+          node <<'JS'
+          const {webkit}=require('playwright');
+          (async()=>{
+            const b=await webkit.launch({headless:true});
+            const context=await b.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1'});
+            const p=await context.newPage();const errors=[],bad=[];
+            p.on('pageerror',e=>errors.push(e.stack||e.message));
+            p.on('response',r=>{if(r.status()>=400)bad.push(r.status()+' '+r.url())});
+            await p.goto('http://127.0.0.1:8765/?direct=atlas&v=traffic-11.0',{waitUntil:'domcontentloaded',timeout:55000});
+            await p.waitForFunction(()=>window.STS_TRAFFIC_V11_READY&&window.STS_SHIPYARD_EXPORT_MODEL&&window.STS_STATIONYARD_EXPORT_MODEL&&window.STS_GET_ATLAS?.(),{timeout:35000});
+            await p.locator('#openJourneyBtn').tap();
+            await p.locator('[data-vessel="clipper"]').tap();
+            await p.locator('#journeyStart').tap();
+            await p.waitForTimeout(700);
+            const sail=await p.evaluate(()=>({diag:window.STS_TRAFFIC_V11_DIAGNOSTICS(),
+              label:document.getElementById('sts11BeamFrom').textContent,
+              view:document.querySelector('.view.active')?.id,
+              gl:!!window.STS_GET_ATLAS().gl}));
+            console.log('SAFARI_SAIL',JSON.stringify(sail));
+            if(!sail.diag.journey||sail.diag.source===null||!sail.diag.shipModels.some(x=>x.id==='clipper'))throw Error('Safari sail model or transmitter missing');
+            await p.locator('#journeyStop').tap();
+            await p.locator('[data-mode="fusion"]').tap();
+            await p.locator('[data-timescale="5"]').tap();
+            await p.locator('#journeyStart').tap();
+            await p.waitForTimeout(800);
+            const fusion=await p.evaluate(()=>({diag:window.STS_TRAFFIC_V11_DIAGNOSTICS(),
+              preset:window.STS_GET_ATLAS().activeJourney?.preset,
+              follow:document.getElementById('sts11Follow').getAttribute('aria-pressed'),
+              sourceHidden:document.getElementById('sts11BeamPanel').hidden}));
+            console.log('SAFARI_FUSION',JSON.stringify(fusion));
+            if(!fusion.diag.journey||fusion.preset.mode!=='fusion'||!fusion.sourceHidden||!fusion.diag.shipModels.some(x=>x.id==='fusion'))throw Error('Safari fusion mode missing');
+            await p.locator('#sts11Follow').tap();
+            console.log('SAFARI_CAMERA',JSON.stringify(await p.evaluate(()=>window.STS_TRAFFIC_V11_STATE.follow)));
+            console.log('SAFARI_ERRORS',JSON.stringify(errors.concat(bad)));
+            if(errors.length||bad.length)throw Error('WebKit runtime/network failure');
+            await b.close();
+          })().catch(e=>{console.error('SAFARI_TEST_FAILED',e);process.exit(1)});
+          JS
