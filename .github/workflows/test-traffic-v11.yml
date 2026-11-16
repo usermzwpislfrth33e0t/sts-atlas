@@ -15,7 +15,7 @@ jobs:
           node --check sts-traffic-v11.js
           node --check shipyard-v7.js
           node --check stationyard-v1.js
-          grep -q 'sts-traffic-v11.js?v=11.0' index.html
+          grep -q 'sts-traffic-v11.js?v=11.1' index.html
           grep -q 'stationyard-v1.js?v=11.0' index.html
           grep -q 'shipyard-v7.js?v=11.0' shipyard-v5.js
       - name: Browser simulation tests (mobile & desktop)
