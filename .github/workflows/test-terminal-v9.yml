@@ -15,13 +15,15 @@ jobs:
           node --check sts-terminal-v9.js
           grep -q 'sts-terminal-v9.js' index.html
           grep -q 'sts-terminal-v9.css' index.html
-      - name: Install browser test harness
-        run: npm install --no-save --ignore-scripts playwright-core@1.57.0
+      - name: Install browser test harness with WebKit
+        run: |
+          npm install --no-save playwright@1.57.0
+          npx playwright install --with-deps webkit
       - name: Render entrance and complete original navigation transition
         run: |
           python3 -m http.server 8765 >/tmp/sts-http.log 2>&1 &
           node <<'JS'
-          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          const {chromium,webkit}=require('playwright'),{execSync}=require('child_process');
           (async()=>{
             const bin=execSync('which google-chrome || which chromium').toString().trim();
             const browser=await chromium.launch({headless:true,executablePath:bin,args:['--no-sandbox','--disable-gpu-sandbox']});
@@ -68,6 +70,31 @@ jobs:
             };
             await test(1300,870,false);
             await test(390,844,true);
+            const wk=await webkit.launch({headless:true});
+            const safari=await wk.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1,
+              userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1'});
+            const sp=await safari.newPage();const wkErrors=[];
+            sp.on('pageerror',e=>wkErrors.push(e.stack||e.message));
+            sp.on('requestfailed',r=>wkErrors.push('network '+r.url()+' '+r.failure()?.errorText));
+            await sp.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:50000});
+            await sp.waitForFunction(()=>window.STS_TERMINAL_V9_READY===true,{timeout:25000});
+            console.log('WEBKIT_PORTAL',JSON.stringify(await sp.evaluate(()=>({
+              commands:document.querySelectorAll('.sts9-action').length,
+              width:document.documentElement.scrollWidth,canvases:document.querySelectorAll('canvas').length,
+              buttons:[...document.querySelectorAll('.sts9-action')].map(e=>({mode:e.dataset.sts9Destination,rect:e.getBoundingClientRect().toJSON()}))
+            }))));
+            await sp.locator('.sts9-action[data-sts9-destination="atlas"]').tap();
+            await sp.waitForTimeout(450);
+            console.log('WEBKIT_BOOT',JSON.stringify(await sp.evaluate(()=>({boot:document.querySelector('#sts9BootOverlay')?.className,
+              nativeBoot:document.querySelector('#boot')?.className,appReady:document.querySelector('#app')?.className,
+              phase:window.STS_TERMINAL_V9_STATE?.phase}))));
+            await sp.waitForTimeout(3500);
+            console.log('WEBKIT_FINAL',JSON.stringify(await sp.evaluate(()=>({active:document.querySelector('.view.active')?.id,
+              app:document.querySelector('#app').className,portalDisplay:document.querySelector('#portal').style.display,
+              nativeBoot:document.querySelector('#boot').className,customBoot:document.querySelector('#sts9BootOverlay').className,
+              state:window.STS_TERMINAL_V9_STATE}))));
+            await capture(sp,'webkit-portal-after','#app');
+            console.log('WEBKIT_ERRORS',JSON.stringify(wkErrors));await wk.close();
             console.log('JS_ERRORS',JSON.stringify(errors));
             await browser.close();
             if(errors.length)process.exitCode=1;
