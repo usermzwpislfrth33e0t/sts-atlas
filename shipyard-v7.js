@@ -144,12 +144,15 @@ function buildFreighter(){
  // floated at the axis instead of following the two off-axis engines.
  for(const sign of [-1,1]){
   const x=sign*1.10,y=-.39;
-  tapered(drive,[x,y,6.20],[x,y,5.05],.30,.41,'hull',14);
-  const rim=ring(drive,.42,.075,5.02,'bronze',24),glow=ring(drive,.28,.055,4.97,'glow',24);
+  // Main electric propulsion is mounted behind the cargo truss, adjacent
+  // to the sail receiver hub, not on the pointed +Z crew capsule.
+  tapered(drive,[x,y,-2.90],[x,y,-4.32],.30,.41,'hull',14);
+  const rim=ring(drive,.42,.075,-4.34,'bronze',24),glow=ring(drive,.28,.055,-4.41,'glow',24);
   for(const part of [rim,glow]){part.position.x=x;part.position.y=y}
-  rod(drive,[sign*.70,-.16,6.25],[x,y,5.75],.066,'steel',9);
+  rod(drive,[sign*.69,-.16,-2.60],[x,y,-3.83],.074,'steel',9);
+  rod(drive,[0,0,-3.23],[x,y,-3.09],.052,'metal',8);
  }
- return {membrane:[-3.15,2.7,-4.65],booms:[3.4,2.5,-4.1],bus:[0,.65,7.35],payload:[.7,.75,2.8],thrusters:[1.1,-.39,5.02]};
+ return {membrane:[-3.15,2.7,-4.65],booms:[3.4,2.5,-4.1],bus:[0,.65,7.35],payload:[.7,.75,2.8],thrusters:[1.1,-.39,-4.35]};
 }
 function buildClipper(){
  const sail=setPart('membrane'),booms=setPart('booms'),bus=setPart('bus'),payload=setPart('payload'),drive=setPart('thrusters');
