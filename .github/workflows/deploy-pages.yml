@@ -44,7 +44,7 @@ jobs:
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           assert 'shipyard-v5.js?v=7.1' in source and 'shipyard-v5.css?v=7.1' in source
-          station_css = '<link rel="stylesheet" href="./stationyard-v1.css?v=1.0">'
+          station_css = '<link rel="stylesheet" href="./stationyard-v1.css?v=1.2">'
           station_js = '<script type="module" src="./stationyard-v1.js?v=1.2"></script>'
           if 'stationyard-v1.css' not in source:
               source = source.replace('</head>', station_css + '\n</head>', 1)
