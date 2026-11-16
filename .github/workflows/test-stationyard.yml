@@ -1,0 +1,63 @@
+name: Test STS Station Engineering
+on:
+  push:
+    paths: [.github/workflows/test-stationyard.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate syntax and three.js assets
+        run: |
+          node --check stationyard-v1.js
+          node --check shipyard-v5.js
+          test -s vendor/three.module.js
+      - name: Install browser test harness
+        run: npm install --no-save --ignore-scripts playwright-core@1.57.0
+      - name: Render nine station classes
+        run: |
+          python3 -m http.server 8765 >/tmp/sts-http.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+          const binary=execSync('which google-chrome || which chromium').toString().trim();
+          const browser=await chromium.launch({headless:true,executablePath:binary,args:['--no-sandbox','--disable-gpu-sandbox']});
+          const page=await browser.newPage({viewport:{width:1360,height:1024},deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:45000});
+          await page.addStyleTag({content:'#portal,#boot{display:none!important} #app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #facilitiesView{display:block!important;opacity:1!important;visibility:visible!important;position:relative!important}'});
+          await page.evaluate(()=>document.querySelector('#facilitiesView')?.classList.add('active'));
+          await page.waitForFunction(()=>window.STS_STATIONYARD_READY,{timeout:35000});
+          await page.waitForTimeout(800);
+          console.log('CATALOG_COUNT',await page.locator('#stationyardSelect option').count());
+          const types=['HUB','TERMINAL','YARD','RELAY','ARRAY','SAFETY','CATCHER','POWER','SERVICE'];
+          for(const type of types){
+            await page.locator('.stationyard-class[data-type="'+type+'"]').click();
+            await page.waitForTimeout(450);
+            const title=await page.locator('#stationyardName').textContent();
+            const pressed=await page.locator('.stationyard-class[data-type="'+type+'"]').getAttribute('aria-pressed');
+            console.log('STATION_TYPE',type,JSON.stringify(title),pressed);
+            if(pressed!=='true')throw Error('Failed type '+type);
+            const img=await page.locator('#stationyardViewport').screenshot({type:'jpeg',quality:52});
+            const b64=img.toString('base64');
+            console.log('SHOT_START:'+type+':'+b64.length);
+            for(let i=0;i<b64.length;i+=6000)console.log('SHOT_CHUNK:'+type+':'+i+':'+b64.slice(i,i+6000));
+            console.log('SHOT_END:'+type);
+          }
+          await page.locator('#stationyardSelect').selectOption('E03');
+          await page.locator('#stationyardExplode').click();
+          await page.locator('#stationyardWire').click();
+          await page.locator('#stationyardPlus').click();
+          console.log('INTERACTIVE_STATES',await page.evaluate(()=>({
+            id:document.querySelector('#stationyardSelect').value,
+            explode:document.querySelector('#stationyardExplode').getAttribute('aria-pressed'),
+            wire:document.querySelector('#stationyardWire').getAttribute('aria-pressed'),
+            mapOverride:window.STS3D.Atlas3D.prototype.drawStation.toString().includes("CATCHER")
+          })));
+          console.log('JS_ERRORS',JSON.stringify(errors));
+          await browser.close();if(errors.length)process.exitCode=1;
+          })().catch(e=>{console.error('TEST_FAIL',e);process.exitCode=1});
+          JS
