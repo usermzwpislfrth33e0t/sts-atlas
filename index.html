@@ -278,12 +278,19 @@ function transferArc(a,b,steps=72){
  const ra=Math.hypot(a[0],a[2]),rb=Math.hypot(b[0],b[2]);
  const aa=Math.atan2(a[2],a[0]),ab=Math.atan2(b[2],b[0]);
  const delta=turnAngle(aa,ab),pts=[];
- // A monotonic low-thrust orbital transfer projection: the radius does not
- // overshoot and the solar longitude never reverses or doubles back.
+ const semi=(ra+rb)*.5,ecc=Math.abs(rb-ra)/Math.max(.001,ra+rb);
+ const outward=rb>=ra;
+ // Eccentric anomaly across a two-body reference ellipse. Longitude is
+ // projected to the fixed, not-to-scale archive map: the real target would
+ // move during a correctly phased rendezvous. No arbitrary Bezier loops.
  for(let i=0;i<=steps;i++){
-  const t=i/steps,q=t*t*(3-2*t),theta=aa+delta*t;
-  const r=ra+(rb-ra)*q;
-  pts.push([Math.cos(theta)*r,a[1]*(1-t)+b[1]*t,Math.sin(theta)*r]);
+  const t=i/steps,E=(outward?0:Math.PI)+Math.PI*t;
+  const r=semi*(1-ecc*Math.cos(E));
+  let anomaly=Math.atan2(Math.sqrt(1-ecc*ecc)*Math.sin(E),Math.cos(E)-ecc);
+  if(anomaly<0)anomaly+=TAU;
+  const w=clamp((anomaly-(outward?0:Math.PI))/Math.PI,0,1);
+  const theta=aa+delta*w;
+  pts.push([r*Math.cos(theta),a[1]*(1-t)+b[1]*t,r*Math.sin(theta)]);
  }
  pts[0]=a.slice();pts[steps]=b.slice();return pts;
 }
