@@ -1,0 +1,94 @@
+name: Test STS V10 Startup and Safari
+on:
+  push:
+    paths: [.github/workflows/test-startup-v10.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate reduced startup payload
+        run: |
+          node --check sts-terminal-v9.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');src=p.read_text()
+          mp3=Path('assets/sts-ambient.mp3')
+          print('PAYLOAD_HTML_BYTES',p.stat().st_size)
+          print('PAYLOAD_AUDIO_BYTES',mp3.stat().st_size)
+          assert p.stat().st_size<250000,'HTML should not embed a 5MB music file'
+          assert mp3.stat().st_size>4000000
+          assert 'data:audio/mpeg;base64' not in src
+          assert 'sts-terminal-v9.js?v=10.0' in src
+          assert 'sts-terminal-v9.css?v=10.0' in src
+          PY
+      - name: Install mobile WebKit browser
+        run: |
+          npm install --no-save playwright@1.57.0
+          npx playwright install --with-deps webkit
+      - name: Test entry animation continuity and audio deferral
+        run: |
+          python3 -m http.server 8765 >/tmp/sts-http.log 2>&1 &
+          node <<'JS'
+          const {chromium,webkit}=require('playwright');
+          const {execSync}=require('child_process');
+          (async()=>{
+            const engines=[['chromium',await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox']})],['webkit',await webkit.launch({headless:true})]];
+            for(const [name,browser] of engines){
+              const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+              const p=await ctx.newPage(),issues=[],audio=[];
+              p.on('pageerror',e=>issues.push(e.stack||e.message));
+              p.on('response',r=>{if(r.status()>=400)issues.push('HTTP '+r.status()+' '+r.url())});
+              p.on('request',r=>{if(r.url().includes('sts-ambient.mp3'))audio.push(r.url())});
+              const start=Date.now();
+              const res=await p.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:45000});
+              await p.waitForFunction(()=>window.STS_TERMINAL_V9_READY===true,{timeout:20000});
+              console.log('STARTUP_'+name,JSON.stringify({
+                response:res.status(),htmlReadyMs:Date.now()-start,
+                root:await p.locator('#portal').isVisible(),audioRequests:audio.length,
+                htmlBytes:(await res.body()).length
+              }));
+              await p.evaluate(()=>{
+                const el=document.getElementById('sts9BootTitle');
+                window.__bootRecorded=[{label:el.textContent,t:performance.now()}];
+                const obs=new MutationObserver(()=>window.__bootRecorded.push({label:el.textContent,t:performance.now()}));
+                obs.observe(el,{childList:true,characterData:true,subtree:true});
+              });
+              const entered=Date.now();
+              await p.locator('.sts9-action[data-sts9-destination="atlas"]').tap();
+              await p.waitForTimeout(760);
+              const mid=await p.evaluate(()=>({
+                customBootVisible:document.querySelector('#sts9BootOverlay').classList.contains('sts9-boot-open'),
+                nativeBootDisplay:getComputedStyle(document.querySelector('#boot')).display,
+                appReady:document.querySelector('#app').classList.contains('ready'),
+                title:document.querySelector('#sts9BootTitle').textContent,
+                activeStage:document.querySelectorAll('.sts9-boot-task.is-active').length
+              }));
+              console.log('MID_BOOT_'+name,JSON.stringify(mid));
+              if(!mid.customBootVisible||mid.nativeBootDisplay!=='none'||mid.appReady)
+                throw Error(name+' entry was skipped before the six stages played');
+              await p.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:10000});
+              const done=await p.evaluate(()=>({
+                duration:performance.now()-window.__bootRecorded[0].t,
+                titles:[...new Set(window.__bootRecorded.map(x=>x.label))],
+                app:document.querySelector('#app').className,
+                active:document.querySelector('.view.active')?.id,
+                bootVisible:document.querySelector('#sts9BootOverlay').getAttribute('aria-hidden')
+              }));
+              console.log('DONE_'+name,JSON.stringify({...done,entryWallMs:Date.now()-entered,audioRequests:audio.length}));
+              if(done.active!=='atlasView'||done.bootVisible!=='true'||done.titles.length<6||audio.length)
+                throw Error(name+' lost stages, route or audio deferred loading');
+              const direct=await ctx.newPage();
+              await direct.goto('http://127.0.0.1:8765/?direct=atlas&v=terminal-10.0',{waitUntil:'domcontentloaded',timeout:45000});
+              await direct.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.direct===true,{timeout:20000});
+              console.log('DIRECT_'+name,await direct.locator('.view.active').getAttribute('id'));
+              if((await direct.locator('.view.active').getAttribute('id'))!=='atlasView')throw Error('direct view failed');
+              console.log('ERRORS_'+name,JSON.stringify(issues));
+              if(issues.length)throw Error(name+' browser errors');
+              await ctx.close();await browser.close();
+            }
+          })().catch(err=>{console.error('TEST_FAIL',err);process.exitCode=1});
+          JS
