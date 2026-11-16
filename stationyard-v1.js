@@ -1,0 +1,303 @@
+/* STS / Station Engineering 01 — nine orbital infrastructure typologies.
+   Uses the existing 79 facility records; all geometry is local WebGL. */
+import * as THREE from './vendor/three.module.js';
+const V=window.STS3D;
+const host=document.getElementById('facilitiesView');
+if(!V?.STATIONS?.length||!host)throw Error('STS station catalogue unavailable');
+const catalogue=V.STATIONS;
+const counts=Object.fromEntries([...new Set(catalogue.map(s=>s.type))].map(k=>[k,catalogue.filter(s=>s.type===k).length]));
+const types=[
+ ['HUB','환승 허브','Interchange hub','대형 환승 링, 압력 연결축, 다중 접안교, 관제 모듈',
+  [['ring','도킹 링','다수의 선박을 수용하는 원형 접안·결합 구조입니다.'],['spine','연결축','밀폐 수송통로와 하중 전달 트러스가 연결됩니다.'],['berths','다중 접안교','계류부의 표준 인터페이스와 설비 공급 연결구입니다.'],['services','운영·정비부','관제실, 보급 구획, 전력과 열관리 설비입니다.']]],
+ ['TERMINAL','항만 터미널','Passenger and freight terminal','여객 동선, 검역, 화물 취급, 선박 접근',
+  [['docks','접안 헤드','여객선과 화물선의 접근 방향을 분리한 계류부입니다.'],['concourse','중앙 터미널','승객 이동·검역과 압력 연결 통로를 포함합니다.'],['berths','여객·화물 선석','선석마다 독립된 승강·물류 접속구가 있습니다.'],['utilities','항만 운영부','통신·냉각·화물 취급용 기초 설비입니다.']]],
+ ['YARD','조선·정비소','Orbital shipyard','개방형 드라이도크, 구조 트러스, 제작 갠트리',
+  [['dock','드라이도크','조립 중인 선체를 고정할 수 있는 개방형 지그입니다.'],['gantry','이동형 갠트리','용접·검사·구조 부품 취급을 위한 이동식 작업대입니다.'],['industry','제작 시설','자재 보관과 조립을 담당하는 산업 모듈입니다.'],['service','작업·보급부','추진제 탱크, 승무원·작업자 시설과 작업선 선석입니다.']]],
+ ['RELAY','통신·항법 중계소','Tracking and communication relay','지향성 안테나, 센서 마스트, 통신 배열',
+  [['sensor','탐지 구조물','교통 표적과 빔 조준을 추적하는 센서 구성입니다.'],['dishes','지향성 안테나','장거리 통신 및 추적용 가변 지향 안테나입니다.'],['arrays','배열형 송수신부','전력 수집 및 신호 송수신용 전개 패널입니다.'],['core','중계·자세제어부','통신 장비, 제한적인 작업 공간, 자세 제어계입니다.']]],
+ ['ARRAY','광학 출항 배열','Beam launch and alignment array','출항 정렬 링, 광학 송전부, 냉각 구조',
+  [['frame','광학 정렬 프레임','세일선 출항 방향과 송신부의 기준 축을 맞춥니다.'],['emitters','출력 배열','다수의 독립 발광·빔 형성 장치로 구성됩니다.'],['optics','광학 주축','빔 정렬과 진동 제어를 담당하는 광학 지지 구조입니다.'],['power','전력·방열부','전원 분배, 축전 및 방열 구조입니다.']]],
+ ['SAFETY','안전·구난 감시소','Traffic safety outpost','추적 센서, 구조선 대기대, 관제와 경보',
+  [['sensors','광역 관측 프레임','파편과 위험 접근체를 추적하기 위한 센서입니다.'],['control','관제실','안전 명령과 구조선 출동을 조정합니다.'],['rescue','구난·구조 접안부','긴급 진입 장비와 구조선 접안부입니다.'],['arms','점검 작업장치','외부 선체를 검사하고 회수하는 작업 암입니다.']]],
+ ['CATCHER','화물 포획 시설','Cargo capture installation','감속·포획 프레임, 화물 이송, 완충 구조',
+  [['frame','포획 프레임','고속 접근체의 진입 축을 한정하는 개방형 프레임입니다.'],['capture','완충·유도 구역','화물 컨테이너의 상대속도 처리와 포획을 보조합니다.'],['cargo','화물 인계부','포획한 화물을 예인선과 선별 라인으로 인계합니다.'],['control','안전 관제부','포획창 검증, 정밀 계측과 긴급 중단 장비입니다.']]],
+ ['POWER','발전·송전 시설','Power generation and transmission','발전 모듈, 열관리, 전력 송전 개구',
+  [['reactor','발전 모듈','발전 및 에너지 전환 장치가 격리된 장착부입니다.'],['radiators','대형 방열 구조','발전과 전력 변환 과정의 폐열을 처리합니다.'],['beam','송전부','광학 또는 마이크로파 계통의 지향성 송신부입니다.'],['support','서비스·차폐부','차폐 모듈, 전력 계측 및 정비 연결부입니다.']]],
+ ['SERVICE','보급·지원 시설','Service and logistics station','추진제 저장, 예인선, 보급·정비 선석',
+  [['core','지원 모듈','정비·화물 취급·통신과 일반 운영 업무를 수행합니다.'],['tanks','저장 탱크','추진제, 반응질량 및 각종 공급 물자를 저장합니다.'],['docks','서비스 선석','예인선과 보급선을 위한 다방향 접안 구조입니다.'],['radiators','전력·열관리부','보급 작업에 필요한 발전·방열·자세제어 설비입니다.']]]
+];
+const profile=Object.fromEntries(types.map(t=>[t[0],t]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+const section=document.createElement('section');section.id='stationyardSection';section.className='stationyard-section';
+section.innerHTML=[
+ '<div class="stationyard-eyebrow">STATION ARCHITECTURE / 2120 — 79 REGISTERED INSTALLATIONS</div>',
+ '<div class="stationyard-intro"><div><h3>정거장 설계</h3><p>등록된 시설을 형식별로 살펴보는 3D 구조 뷰어입니다. 정거장 종류와 시설명을 선택하고, 회전하거나 부품을 선택해 보세요.</p></div><span class="stationyard-version">STS / ENGINEERING 01</span></div>',
+ '<div class="shipyard-console stationyard-console"><div class="shipyard-main">',
+ '<div class="stationyard-classes" role="group" aria-label="정거장 분류">',
+ ...types.map((t,i)=>'<button type="button" data-type="'+t[0]+'" class="stationyard-class" aria-pressed="false"><small>'+String(i+1).padStart(2,'0')+' / '+t[0]+' · '+counts[t[0]]+'</small><strong>'+t[1]+'</strong></button>'),
+ '</div>',
+ '<div class="stationyard-catalogue"><label for="stationyardSelect">FACILITY REGISTER</label><select id="stationyardSelect" aria-label="3D 정거장 시설 선택"></select><span id="stationyardCount"></span></div>',
+ '<div class="shipyard-viewport stationyard-viewport" id="stationyardViewport"><canvas id="stationyardCanvas" aria-label="정거장 3D 모형. 드래그로 회전, 두 손가락으로 확대·축소"></canvas>',
+ '<div class="shipyard-sensor"><span><i></i>STS / STATION ENGINEERING VIEWPORT</span><b>DRAG TO ORBIT · PINCH / WHEEL TO ZOOM</b></div>',
+ '<span class="shipyard-watermark">MATERIAL / SHADED</span><span class="shipyard-coordinates" id="stationyardCoord">AZ / EL / ZOOM</span><div id="stationyardPins"></div></div>',
+ '<div class="shipyard-toolbar"><div class="shipyard-tools">',
+ '<button type="button" class="shipyard-tool" id="stationyardAuto" aria-pressed="true">⟳ AUTO ROTATE</button>',
+ '<button type="button" class="shipyard-tool" id="stationyardExplode" aria-pressed="false">EXPLODED</button>',
+ '<button type="button" class="shipyard-tool" id="stationyardWire" aria-pressed="false">WIREFRAME</button>',
+ '<button type="button" class="shipyard-tool" id="stationyardReset">RESET</button>',
+ '<button type="button" class="shipyard-tool" id="stationyardPlus" aria-label="확대">＋</button>',
+ '<button type="button" class="shipyard-tool" id="stationyardMinus" aria-label="축소">－</button></div><span class="shipyard-readout">3D GEOMETRY · LOCAL WEBGL</span></div>',
+ '</div><aside class="shipyard-sidebar"><div class="shipyard-sidebar-top">',
+ '<span class="shipyard-series" id="stationyardType"></span><h3 id="stationyardName"></h3><p id="stationyardRole"></p>',
+ '</div><div class="shipyard-specs" id="stationyardSpecs"></div>',
+ '<div class="shipyard-parts" id="stationyardParts"></div>',
+ '<div class="shipyard-part-note"><b id="stationyardPartTitle"></b><p id="stationyardPartDesc"></p></div>',
+ '</aside></div>',
+ '<div class="stationyard-note">모델은 각 시설의 운영상 역할에 따른 형식별 개념 설계입니다. 부품 배치와 치수는 확정된 도면이 아닙니다. 등록부의 운영 자료는 기존 STS 설정을 따릅니다.</div>'
+].join('');
+const regControls=host.querySelector('.registry-controls');(regControls||host).before(section);
+const $=q=>section.querySelector(q),$$=q=>[...section.querySelectorAll(q)];
+const viewport=$('#stationyardViewport'),canvas=$('#stationyardCanvas');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x08131e);
+const camera=new THREE.PerspectiveCamera(37,1,.1,400);
+let renderer;try{renderer=new THREE.WebGLRenderer({canvas,alpha:false,antialias:!matchMedia('(max-width:700px)').matches,powerPreference:'default'})}
+catch(err){viewport.insertAdjacentHTML('beforeend','<p class="stationyard-error">이 브라우저에서는 3D 렌더링을 시작할 수 없습니다. WebGL 지원을 확인해 주세요.</p>');console.warn(err)}
+if(renderer){renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.19;renderer.setPixelRatio(Math.min(devicePixelRatio||1,matchMedia('(max-width:700px)').matches?1.2:1.6))}
+scene.add(new THREE.HemisphereLight(0xe8f4ff,0x101e2d,1.65));
+function directional(col,intensity,x,y,z){const light=new THREE.DirectionalLight(col,intensity);light.position.set(x,y,z);scene.add(light)}
+directional(0xe8f5ff,3.2,-7,9,11);directional(0x96b8d8,1.8,8,-3,-9);directional(0xe0af82,.62,4,7,-5);
+const material={
+ alloy:new THREE.MeshStandardMaterial({color:0x7e96a5,metalness:.69,roughness:.42,side:THREE.DoubleSide}),
+ white:new THREE.MeshStandardMaterial({color:0xbccbd4,metalness:.37,roughness:.53,side:THREE.DoubleSide}),
+ ceramic:new THREE.MeshStandardMaterial({color:0xe2e6e5,metalness:.20,roughness:.56,side:THREE.DoubleSide}),
+ dark:new THREE.MeshStandardMaterial({color:0x283c4c,metalness:.57,roughness:.49,side:THREE.DoubleSide}),
+ frame:new THREE.MeshStandardMaterial({color:0x576d7a,metalness:.76,roughness:.44,side:THREE.DoubleSide}),
+ copper:new THREE.MeshStandardMaterial({color:0x895d46,metalness:.61,roughness:.43,side:THREE.DoubleSide}),
+ gold:new THREE.MeshStandardMaterial({color:0xb7955a,metalness:.75,roughness:.38,side:THREE.DoubleSide}),
+ hazard:new THREE.MeshStandardMaterial({color:0xc18b41,metalness:.48,roughness:.47,side:THREE.DoubleSide}),
+ solar:new THREE.MeshStandardMaterial({color:0x263b50,metalness:.51,roughness:.47,side:THREE.DoubleSide}),
+ glass:new THREE.MeshPhysicalMaterial({color:0x3b798d,metalness:.19,roughness:.25,clearcoat:.5,side:THREE.DoubleSide}),
+ blue:new THREE.MeshStandardMaterial({color:0x9fc6d8,metalness:.36,roughness:.34,side:THREE.DoubleSide}),
+ light:new THREE.MeshStandardMaterial({color:0x8fd8f4,emissive:0x4caaca,emissiveIntensity:1.5,roughness:.38}),
+ amber:new THREE.MeshStandardMaterial({color:0xdfb77a,emissive:0x8c6029,emissiveIntensity:1.1}),
+ red:new THREE.MeshStandardMaterial({color:0xc56e66,emissive:0x903d3e,emissiveIntensity:1.3})
+};
+const V3=(a,b,c)=>new THREE.Vector3(a||0,b||0,c||0);
+const main=new THREE.Group();scene.add(main);
+let root,parts={},anchors={},selected=null,activeRecord=null;
+const state={yaw:-.61,pitch:.29,dist:25,targetDist:25,auto:!matchMedia('(prefers-reduced-motion: reduce)').matches,explode:false,wire:false,moving:new Map(),dirty:true,w:0,h:0};
+function part(name){const g=new THREE.Group();g.userData.part=name;root.add(g);parts[name]=g;return g}
+function add(g,geometry,mat='alloy',pos=[0,0,0],rotation){const m=new THREE.Mesh(geometry,material[mat].clone());m.position.set(...pos);if(rotation)m.rotation.set(...rotation);m.userData.part=g.userData.part;g.add(m);return m}
+function box(g,p,s,mat='alloy'){return add(g,new THREE.BoxGeometry(...s),mat,p)}
+function beam(g,a,b,r=.055,mat='frame',segments=8){
+ const A=V3(...a),B=V3(...b),d=B.clone().sub(A),len=d.length();if(len<.001)return;
+ const mesh=add(g,new THREE.CylinderGeometry(r,r,len,segments),mat,A.add(B).multiplyScalar(.5));mesh.quaternion.setFromUnitVectors(V3(0,1,0),d.normalize());return mesh}
+function tube(g,a,b,r=.5,mat='white',segments=16,r2=r){const A=V3(...a),B=V3(...b),d=B.clone().sub(A);
+ const m=add(g,new THREE.CylinderGeometry(r2,r,d.length(),segments),mat,A.add(B).multiplyScalar(.5));m.quaternion.setFromUnitVectors(V3(0,1,0),d.normalize());return m}
+function ring(g,R,r,z,mat='frame',n=48){return add(g,new THREE.TorusGeometry(R,r,9,n),mat,[0,0,z])}
+function orb(g,p,r,mat='light'){return add(g,new THREE.SphereGeometry(r,10,8),mat,p)}
+function octagonal(g,R,z,r=.14,mat='frame',n=12){for(let i=0;i<n;i++){let a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;beam(g,[Math.cos(a)*R,Math.sin(a)*R,z],[Math.cos(b)*R,Math.sin(b)*R,z],r,mat,8)}}
+function beacon(g,p){tube(g,[p[0],p[1],p[2]],[p[0],p[1]+.47,p[2]],.025,'frame',7);orb(g,[p[0],p[1]+.5,p[2]],.085,'amber')}
+function lattice(g,z0,z1,r=.6,steps=6){const P=[[-r,-r],[r,-r],[r,r],[-r,r]];for(const [x,y] of P)beam(g,[x,y,z0],[x,y,z1],.052,'alloy');
+for(let i=0;i<steps;i++){let a=z0+(z1-z0)*i/steps,b=z0+(z1-z0)*(i+1)/steps;for(let j=0;j<4;j++){const A=P[j],B=P[(j+1)%4];beam(g,[A[0],A[1],a],[B[0],B[1],a],.038,'frame');beam(g,[A[0],A[1],a],[B[0],B[1],b],.028,'frame')}}}
+function port(g,p,R=.36,mat='gold',axis='z'){let rr=ring(g,R,.045,p[2],mat,24);rr.position.x=p[0];rr.position.y=p[1];if(axis==='x')rr.rotation.y=Math.PI/2;return rr}
+function pressure(g,a,b,R=.67,mat='white'){tube(g,[0,0,a],[0,0,b],R,mat,20);for(let z=a+.27;z<b;z+=.75){ring(g,R+.022,.032,z,'frame',24)}for(let z=a+.45;z<b-.25;z+=1.1){for(const s of [-1,1])box(g,[s*R*.95,0,z],[.07,.22,.34],'glass')}}
+function panels(g,xCenter,zCenter,span=4,length=3,y=0){
+ for(let s of [-1,1]){const w=span*.44,x=xCenter+s*(span*.26+.38);const slab=box(g,[x,y,zCenter],[w,.035,length],'solar');
+ for(let j=0;j<5;j++){let xx=x-w*.5+j*w/4;beam(g,[xx,y+.037,zCenter-length*.48],[xx,y+.037,zCenter+length*.48],.018,'blue',5)}
+ for(let j=0;j<5;j++){let z=zCenter-length*.5+j*length/4;beam(g,[x-w*.49,y+.039,z],[x+w*.49,y+.039,z],.014,'frame',5)}
+ beam(g,[xCenter,y-.08,zCenter],[x,y,zCenter],.055,'frame')}
+}
+function tanks(g,baseZ=4,number=6,r=0.38){for(let i=0;i<number;i++){const side=i%2?-1:1,layer=Math.floor(i/2),x=side*(.9+layer*.62),y=-.72-(i%3)*.12;const z=baseZ+(layer%2)*.7;
+ tube(g,[x,y,z-.85],[x,y,z+.85],r,'white',14);for(const zz of [-.6,.55]){const t=ring(g,r+.03,.05,z+zz,'gold',18);t.position.x=x;t.position.y=y}box(g,[x,y+r,z],[.38,.11,.65],'dark')}}
+function dockingArms(g,zs=[-1.5,1.5,4.5]){for(const z of zs)for(const s of [-1,1]){let y=s*1.25;beam(g,[0,s*.54,z],[0,y,z],.15,'frame');
+box(g,[0,y,z],[2.65,.27,.43],'alloy');box(g,[0,y+s*.15,z],[2.25,.06,.31],'white');for(const x of [-1.15,1.15]){box(g,[x,y,z],[.34,.47,.55],'ceramic');beacon(g,[x,y+.25,z])}for(const x of [-.8,.8])port(g,[x,y,z+.24],.18,'blue')}}
+function trussBox(g,x0,x1,y0,y1,z0,z1){const corners=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];for(const [x,y] of corners)beam(g,[x,y,z0],[x,y,z1],.075,'frame');for(const z of [z0,z1])for(let i=0;i<4;i++){let a=corners[i],b=corners[(i+1)%4];beam(g,[...a,z],[...b,z],.072,'alloy')}for(let i=0;i<4;i++){let a=corners[i],b=corners[(i+1)%4];beam(g,[...a,z0],[...b,z1],.042,'frame')}}
+function dish(g,p,R=1.05,tilt=0){const curve=[];for(let i=0;i<=12;i++){const r=R*i/12;curve.push(new THREE.Vector2(r,-.27+.3*(r/R)**2))}
+const geom=new THREE.LatheGeometry(curve,28);const m=add(g,geom,'white',p,[tilt,0,.35]);const axis=V3(Math.sin(.35),Math.cos(.35),0);beam(g,[p[0],p[1]-.10,p[2]],[p[0],p[1]+R*.73,p[2]],.045,'frame');orb(g,[p[0],p[1]+R*.73,p[2]],.12,'light');return m}
+function controlPod(g,p=[0,0,0],size=1){box(g,p,[1.7*size,.8*size,1.25*size],'ceramic');box(g,[p[0],p[1]+.25*size,p[2]+.3*size],[1.54*size,.30*size,.18*size],'glass');
+for(const x of [-.7,.7])beacon(g,[p[0]+x*size,p[1]+.48*size,p[2]])}
+function segmentedRing(g,R,z,mat='white'){ring(g,R,.28,z,mat,64);ring(g,R-.27,.055,z,'gold',64);
+for(let i=0;i<16;i++){const a=i*2*Math.PI/16,x=Math.cos(a)*R,y=Math.sin(a)*R;
+const p=box(g,[x,y,z],[.65,.35,.74],i%4===0?'ceramic':'frame');p.rotation.z=a+Math.PI*.5;
+if(i%2===0)orb(g,[x*1.03,y*1.03,z+.43],.065,'light');}}
+function hub(){const ringG=part('ring'),spine=part('spine'),berths=part('berths'),service=part('services');
+segmentedRing(ringG,4.0,-4.5,'white');segmentedRing(ringG,3.75,-4.9,'frame');
+for(let i=0;i<12;i++){const a=i*2*Math.PI/12;beam(ringG,[0,0,-4.5],[Math.cos(a)*3.8,Math.sin(a)*3.8,-4.5],.07,'frame')}
+pressure(spine,-4.3,7.6,.59);lattice(spine,-3.8,7.3,.75,9);
+dockingArms(berths,[-.5,2.2,4.9]);controlPod(service,[0,1.34,-4.5],.8);
+for(const x of [-1.3,1.3])tube(service,[x,-.7,5],[x,-.7,8],.33,'ceramic');
+panels(service,0,5.9,6.7,2,-1.6);beacon(service,[0,1.15,7.7]);
+return {ring:[-2.8,2.7,-4.5],spine:[0,.6,.0],berths:[1.2,1.4,2.2],services:[0,1.4,6.0]}}
+function terminal(){const docks=part('docks'),conc=part('concourse'),berths=part('berths'),util=part('utilities');
+segmentedRing(docks,3.2,-5.1);segmentedRing(docks,2.9,-4.78,'frame');
+for(let i=0;i<8;i++){const a=i*Math.PI/4;let x=3.28*Math.cos(a),y=3.28*Math.sin(a);box(docks,[x,y,-5.0],[.68,.54,1.1],'ceramic').rotation.z=a;port(docks,[x,y,-4.32],.23,'blue')}
+pressure(conc,-4.75,8.6,.83);ring(conc,.87,.16,1,'gold',36);
+for(let z=-4.1;z<8;z+=.8)for(let s of [-1,1]){box(conc,[s*.76,.18,z],[.10,.20,.5],'glass');box(conc,[s*.55,-.66,z],[.23,.13,.18],'dark')}
+for(let z of [-2,0.5,3,5.5])for(const s of [-1,1]){const x=s*1.9;box(berths,[x,0,z],[2.9,.36,.6],'alloy');box(berths,[s*3.25,0,z],[.53,.76,.83],'ceramic');port(berths,[s*3.25,0,z+.43],.26,'blue');for(const sx of [-.6,.6])beacon(berths,[x+sx,.26,z])}
+controlPod(util,[0,1.8,-4.8],1);lattice(util,7.1,9.2,.95,3);tanks(util,8.4,4,.32);panels(util,0,2.1,5.2,2.0,-1.3);
+return {docks:[-2.7,2.0,-5],concourse:[0,.8,2.5],berths:[3.2,0,3],utilities:[0,1.65,7.7]}}
+function yard(){const dock=part('dock'),gantry=part('gantry'),industry=part('industry'),service=part('service');
+lattice(industry,-8,1.8,.93,10);controlPod(industry,[0,1.55,-5.6],1.1);
+for(const x of [-3.6,3.6])for(const y of [-2.35,2.35])beam(dock,[x,y,1],[x,y,9.7],.16,'alloy');
+for(const z of [1,3.2,5.4,7.6,9.7])trussBox(dock,-3.6,3.6,-2.35,2.35,z,z+.08);
+for(let z=2;z<9;z+=1.25){beam(dock,[-2.0,-1.1,z],[2,-1.1,z],.06,'frame');box(dock,[0,-1.2,z],[3.0,.18,.32],'dark')}
+tube(dock,[0,0,3.2],[0,0,7.5],.73,'frame');for(const z of [3,5,7])ring(dock,.82,.08,z,'ceramic',28);
+for(const z of [2.1,5.3,8.2]){beam(gantry,[-4,2.75,z],[4,2.75,z],.17,'hazard');beam(gantry,[0,2.75,z],[0,1.2,z],.055,'hazard');box(gantry,[0,1.18,z],[.46,.54,.58],'alloy');
+for(const x of [-3.5,3.5])beam(gantry,[x,2.35,z],[x,2.9,z],.10,'hazard')}
+for(let z=-7;z<-1.2;z+=1.7){box(industry,[1.5,0,z],[1.6,1.0,1.1],'alloy');box(industry,[1.5,.52,z],[1.4,.05,.9],'dark')}
+tanks(service,-5.6,6,.43);panels(service,0,-5.8,5.2,2.7,-1.8);beacon(service,[0,1.6,-6]);
+return {dock:[3.3,1.6,6],gantry:[0,2.75,5.3],industry:[1.2,1,-3.3],service:[-1.4,-.9,-5.8]}}
+function relay(){const sensor=part('sensor'),dishes=part('dishes'),arrays=part('arrays'),core=part('core');
+lattice(sensor,-5,3.3,.28,11);segmentedRing(sensor,2.7,-2.5,'frame');for(let i=0;i<8;i++){const a=i*Math.PI/4;beam(sensor,[0,0,-2.5],[Math.cos(a)*2.7,Math.sin(a)*2.7,-2.5],.055,'gold')}
+beam(sensor,[0,-3.8,-2.5],[0,4.7,-2.5],.074,'frame');beacon(sensor,[0,4.7,-2.5]);
+for(const p of [[1.2,1.2,1.4],[-1.3,1.6,.3],[.5,-1.8,1.6]])dish(dishes,p,p[0]<0?.68:1.03,.32);
+lattice(arrays,3,9,.45,7);
+for(const y of [-1.5,1.5]){box(arrays,[0,y,7],[8.7,.055,2.1],'solar');for(let i=0;i<10;i++)beam(arrays,[-4.3+i*.93,y+.04,5.98],[-4.3+i*.93,y+.04,8.02],.017,'blue',6)}
+pressure(core,-5,-3.6,.62);pressure(core,1.25,3.6,.55);controlPod(core,[0,0,-5.4],.65);beacon(core,[0,.88,2.5]);
+return {sensor:[-2.1,1.6,-2.5],dishes:[1.2,1.6,1.4],arrays:[3.5,1.4,7],core:[0,.6,2.2]}}
+function array(){const frame=part('frame'),emit=part('emitters'),optics=part('optics'),power=part('power');
+segmentedRing(frame,4.2,-5.2,'alloy');segmentedRing(frame,3.9,-4.8,'frame');
+for(let i=0;i<12;i++){const a=i*2*Math.PI/12;beam(frame,[0,0,-5.0],[Math.cos(a)*3.92,Math.sin(a)*3.92,-5.0],.078,'gold')}
+lattice(optics,-4.6,6.6,.78,8);pressure(optics,-4.8,-.7,.51,'glass');for(let z=-4;z<-.7;z+=.58)ring(optics,.58,.053,z,'light',24);
+for(let z of [-.6,.9,2.4,3.9,5.4])for(const s of [-1,1]){let x=s*2.1,y=1.15;
+box(emit,[x,y,z],[1.06,.24,.76],'alloy');box(emit,[x,y+.15,z],[.72,.11,.50],'light');
+box(emit,[x,-y,z],[1.06,.24,.76],'alloy');box(emit,[x,-y-.15,z],[.72,.11,.50],'blue');
+beam(emit,[s*.75,0,z],[x,y,z],.061,'frame')}
+pressure(power,5.6,8.4,.84,'alloy');panels(power,0,6.8,8.1,3.1,-2.3);controlPod(power,[0,1.4,-4.1],.9);beacon(power,[0,1.8,7.6]);
+return {frame:[-3.2,2.8,-5.0],emitters:[2.1,1.3,2.4],optics:[0,.5,-2.1],power:[3.5,-2.3,6.8]}}
+function safety(){const sensors=part('sensors'),control=part('control'),rescue=part('rescue'),arms=part('arms');
+segmentedRing(sensors,3.3,-1.0,'frame');for(let i=0;i<12;i++){const a=i*Math.PI/6;beam(sensors,[Math.cos(a)*3.3,Math.sin(a)*3.3,-1.0],[Math.cos(a)*3.3,Math.sin(a)*3.3,1],.06,'alloy')}
+dish(sensors,[.8,2.35,1.8],.82,.3);beacon(sensors,[0,3.6,.2]);
+pressure(control,-2.6,2.8,1.07);controlPod(control,[0,1.12,-1.5],.85);
+for(const z of [-1.2,1.1]){box(rescue,[1.85,-1.0,z],[2.4,1.05,1.1],'white');box(rescue,[3.1,-.95,z],[.10,.76,.90],'hazard');for(const x of [1,2.6])beacon(rescue,[x,-.37,z])}
+box(rescue,[-1.7,-1.4,1],[3.0,.26,1.35],'frame');for(const x of [-2.6,-.8])box(rescue,[x,-1.12,1],[.74,.54,.88],'ceramic');
+const P=[[-1.15,-1.4,-.5],[-2.8,-2.0,1.6],[-3.7,-2.5,3.0],[-4.1,-2.4,4.1]];
+for(let i=0;i<P.length-1;i++){beam(arms,P[i],P[i+1],.13,'alloy');orb(arms,P[i+1],.22,'hazard')}
+return {sensors:[-2.3,2.4,-1],control:[0,1.7,-1.5],rescue:[2.55,-.95,1.1],arms:[-3.7,-2.5,3]}}
+function catcher(){const frame=part('frame'),capture=part('capture'),cargo=part('cargo'),control=part('control');
+for(const [R,z] of [[4.3,-5.4],[3.65,-3.15],[2.3,-1.0]]){octagonal(frame,R,z,.17,'frame',12);for(let i=0;i<12;i+=3){let a=i*Math.PI/6;beam(frame,[Math.cos(a)*R,Math.sin(a)*R,z],[Math.cos(a)*R*.67,Math.sin(a)*R*.67,z+.8],.10,'alloy')}}
+for(let i=0;i<12;i++){const a=i*Math.PI/6;beam(capture,[Math.cos(a)*4.3,Math.sin(a)*4.3,-5.4],[Math.cos(a)*2.3,Math.sin(a)*2.3,-1],.036,'gold');if(i%2===0)orb(capture,[Math.cos(a)*3.65,Math.sin(a)*3.65,-3.15],.1,'light')}
+lattice(cargo,-.4,7.9,1.0,8);for(let z=0.4;z<7;z+=1.2)for(let x of [-.58,.58])box(cargo,[x,-.45,z],[.92,.78,1.05],z%2?'alloy':'white');
+controlPod(control,[0,1.7,5.4],1.05);beacon(control,[0,2.4,5.7]);for(const x of [-2,2])tube(control,[x,0,5.6],[x,0,8.2],.4,'frame');
+return {frame:[-3,3,-5.3],capture:[2.4,2.4,-3.1],cargo:[.6,-.3,3],control:[0,2.0,5.7]}}
+function power(){const reactor=part('reactor'),rad=part('radiators'),beamG=part('beam'),support=part('support');
+lattice(reactor,-6.3,6,.79,9);for(const z of [-4.4,-1.85,.7]){tube(reactor,[0,0,z-1],[0,0,z+.98],1.05,'alloy',20);for(const zz of [-.92,.90])ring(reactor,1.09,.095,z+zz,'gold',32);
+for(let k=0;k<8;k++){let a=k*Math.PI/4;box(reactor,[Math.cos(a)*1.05,Math.sin(a)*1.05,z],[.27,.3,1.5],'dark')}}
+for(const s of [-1,1]){for(let z of [-3.3,.2,3.6]){box(rad,[s*3.1,0,z],[3.75,.06,2.2],'copper');for(let j=0;j<6;j++)beam(rad,[s*(1.24+j*.6),.05,z-1.07],[s*(1.24+j*.6),.05,z+1.07],.02,'frame')}}
+pressure(support,3.8,7.2,.73,'white');dish(beamG,[0,.7,7.8],1.76,.9);for(let x of [-1.2,1.2]){dish(beamG,[x,-.6,6.3],.6,.65)}beacon(support,[0,1.6,6.7]);
+return {reactor:[0,1.0,-1.8],radiators:[3.1,0,.2],beam:[0,1.35,7.8],support:[0,.7,5.5]}}
+function service(){const core=part('core'),tanksG=part('tanks'),docks=part('docks'),rad=part('radiators');
+lattice(core,-5.7,6.4,.78,8);pressure(core,-4.8,3.8,.87);controlPod(core,[0,1.25,-3],.95);
+for(const s of [-1,1])for(const y of [-1,1]){let x=s*1.5,yy=y*1.1;tube(tanksG,[x,yy,-4],[x,yy,2],.48,'white');for(let z of [-3.5,.8]){const q=ring(tanksG,.53,.05,z,'gold',20);q.position.x=x;q.position.y=yy}}
+for(const z of [-4,0,4.3])for(const s of [-1,1]){beam(docks,[s*.7,0,z],[s*3.15,0,z],.11,'alloy');box(docks,[s*3.15,0,z],[.65,.85,.85],'ceramic');const p=port(docks,[s*3.15,0,z+.45],.33,'blue');beacon(docks,[s*3.15,.5,z])}
+panels(rad,0,5.0,6.8,2.5,-1.7);for(const x of [-.95,.95])tube(rad,[x,.8,4.0],[x,.8,5.9],.22,'frame');
+return {core:[0,1.2,-3],tanks:[-1.5,1.1,-1.0],docks:[3.15,.0,0],radiators:[3,-1.7,5]}}
+const builders={HUB:hub,TERMINAL:terminal,YARD:yard,RELAY:relay,ARRAY:array,SAFETY:safety,CATCHER:catcher,POWER:power,SERVICE:service};
+function refreshAppearance(){for(const [key,g] of Object.entries(parts))g.traverse(o=>{if(!o.isMesh)return;const m=o.material;if(!m.userData.base)m.userData.base=m.emissive.clone();
+ m.emissive.copy(m.userData.base);if(key===selected)m.emissive.add(new THREE.Color(0x12354c));m.wireframe=state.wire;m.needsUpdate=true});state.dirty=true}
+function choosePart(key){if(!parts[key])return;selected=key;const spec=profile[activeRecord.type][4].find(p=>p[0]===key);if(!spec)return;
+ $('#stationyardPartTitle').textContent=key.toUpperCase()+' / '+spec[1];$('#stationyardPartDesc').textContent=spec[2];
+ $$('#stationyardParts button, #stationyardPins button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.part===key)));
+ refreshAppearance()}
+function choose(st){
+ if(!st)return;activeRecord=st;const cl=profile[st.type]||profile.SERVICE;
+ $$('.stationyard-class').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.type===st.type)));
+ $('#stationyardSelect').value=st.id;$('#stationyardCount').textContent=st.id+' / '+st.region.toUpperCase();
+ $('#stationyardType').textContent=st.id+' / '+st.type+' / '+cl[2].toUpperCase();
+ $('#stationyardName').textContent=st.name;$('#stationyardRole').textContent=st.role||cl[3];
+ const stats=[['REGION',st.region],['ORBIT / LOCATION',st.orbit],['MASS',st.mass],['BERTHS',st.berths==null?'—':String(st.berths)],['ELECTRIC',st.electric||'—'],['COMMISSIONED',st.commissioned||'—']];
+ $('#stationyardSpecs').innerHTML=stats.map(([a,b])=>'<div><small>'+esc(a)+'</small><strong>'+esc(b||'—')+'</strong></div>').join('');
+ $('#stationyardParts').innerHTML='<div class="shipyard-parts-title">SYSTEMS / '+cl[4].length+' COMPONENTS</div>'+cl[4].map((p,i)=>'<button type="button" class="shipyard-part" data-part="'+p[0]+'" aria-pressed="false"><span><em>'+String(i+1).padStart(2,'0')+'</em>'+esc(p[1])+'</span></button>').join('');
+ $('#stationyardPins').innerHTML=cl[4].map(p=>'<button type="button" class="shipyard-pin" data-part="'+p[0]+'" aria-label="'+esc(p[1])+' 선택" title="'+esc(p[1])+'" aria-pressed="false"></button>').join('');
+ $$('#stationyardParts button, #stationyardPins button').forEach(b=>b.addEventListener('click',()=>choosePart(b.dataset.part)));
+ while(main.children.length){const old=main.children[0];main.remove(old);old.traverse(o=>{o.geometry?.dispose();o.material?.dispose()})}
+ root=new THREE.Group();main.add(root);parts={};anchors=builders[st.type]?.()||service();
+ const scale=Math.max(.85,Math.min(1.22,.85+Math.log10(Math.max(200,st.mass_t||15000))/18));root.scale.setScalar(scale);
+ state.dist=st.type==='YARD'?34:st.type==='ARRAY'?31:st.type==='HUB'?31:st.type==='TERMINAL'?30:st.type==='RELAY'?29:27;state.targetDist=state.dist;
+ state.yaw=-.66;state.pitch=.27;state.explode=false;$('#stationyardExplode').setAttribute('aria-pressed','false');
+ choosePart(cl[4][0][0]);state.dirty=true;
+}
+const selector=$('#stationyardSelect');
+selector.innerHTML=catalogue.map(st=>'<option value="'+esc(st.id)+'">'+esc(st.id+'  /  '+st.name+'  —  '+st.region)+'</option>').join('');
+selector.addEventListener('change',()=>choose(V.STATION_BY_ID[selector.value]));
+$$('.stationyard-class').forEach(b=>b.addEventListener('click',()=>choose(catalogue.find(st=>st.type===b.dataset.type))));
+const act=(id,fn)=>$('#'+id).addEventListener('click',fn);
+act('stationyardAuto',()=>{state.auto=!state.auto;$('#stationyardAuto').setAttribute('aria-pressed',String(state.auto))});
+act('stationyardExplode',()=>{state.explode=!state.explode;$('#stationyardExplode').setAttribute('aria-pressed',String(state.explode));state.dirty=true});
+act('stationyardWire',()=>{state.wire=!state.wire;$('#stationyardWire').setAttribute('aria-pressed',String(state.wire));refreshAppearance()});
+act('stationyardReset',()=>{choose(activeRecord);state.auto=true;$('#stationyardAuto').setAttribute('aria-pressed','true')});
+act('stationyardPlus',()=>state.targetDist=Math.max(13,state.targetDist*.84));
+act('stationyardMinus',()=>state.targetDist=Math.min(74,state.targetDist*1.19));
+const pointers=new Map();
+viewport.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;
+ viewport.setPointerCapture?.(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ state.auto=false;$('#stationyardAuto').setAttribute('aria-pressed','false');viewport.classList.add('dragging')});
+viewport.addEventListener('pointermove',e=>{const old=pointers.get(e.pointerId);if(!old)return;const now={x:e.clientX,y:e.clientY};pointers.set(e.pointerId,now);
+ if(pointers.size===1){state.yaw-=(now.x-old.x)/Math.max(260,state.w)*4;state.pitch=Math.max(-1.39,Math.min(1.39,state.pitch+(now.y-old.y)/Math.max(260,state.h)*3))}
+ else if(pointers.size===2){const other=[...pointers.entries()].find(([id])=>id!==e.pointerId)?.[1];if(other){const a=Math.hypot(other.x-old.x,other.y-old.y),b=Math.hypot(other.x-now.x,other.y-now.y);if(a>5&&b>5)state.targetDist=Math.max(13,Math.min(74,state.targetDist*a/b))}}
+ state.dirty=true});
+for(const event of ['pointerup','pointercancel','lostpointercapture'])viewport.addEventListener(event,e=>{pointers.delete(e.pointerId);if(!pointers.size)viewport.classList.remove('dragging')});
+viewport.addEventListener('wheel',e=>{e.preventDefault();state.targetDist=Math.max(13,Math.min(74,state.targetDist*(e.deltaY>0?1.1:.9)))},{passive:false});
+function resize(){if(!renderer)return;const b=viewport.getBoundingClientRect();if(!b.width||!b.height)return;state.w=b.width;state.h=b.height;camera.aspect=b.width/b.height;camera.updateProjectionMatrix();renderer.setSize(b.width,b.height,false);state.dirty=true}
+new ResizeObserver(resize).observe(viewport);
+let previous=0;
+function frame(t){requestAnimationFrame(frame);if(!renderer||document.hidden||!host.classList.contains('active')){previous=t;return}
+if(matchMedia('(max-width:700px)').matches&&t-previous<32)return;
+const dt=Math.min(.07,(t-previous)/1000||.02);previous=t;
+if(state.auto){state.yaw+=dt*.06;state.dirty=true}
+state.dist+=(state.targetDist-state.dist)*Math.min(1,dt*8);
+camera.position.set(Math.sin(state.yaw)*Math.cos(state.pitch)*state.dist,Math.sin(state.pitch)*state.dist,Math.cos(state.yaw)*Math.cos(state.pitch)*state.dist);camera.lookAt(0,0,0);
+const offsets={ring:[-1.0,0,-2],spine:[0,0,0],berths:[1.2,.8,1.4],services:[0,1.7,1.2],docks:[0,0,-2],concourse:[0,0,0],utilities:[1,-1.5,2],dock:[1.5,0,2],gantry:[0,1.5,0],industry:[-1.4,0,-1],service:[-1,0,-2],sensor:[-1.2,0,-1],dishes:[1.1,1.3,0],arrays:[2.3,0,2],core:[0,0,0],frame:[-1,0,-2],emitters:[1,1.5,0],optics:[0,0,0],power:[2.0,-1.2,2],sensors:[-.6,0,0],control:[0,.7,0],rescue:[2,0,1],arms:[-1,0,0],capture:[0,0,-1],cargo:[0,0,1],reactor:[0,0,-1],radiators:[2.1,0,0],beam:[0,1.5,1],support:[0,0,1],tanks:[1.5,-.7,-1]};
+let moving=false;
+for(const [key,g] of Object.entries(parts)){const target=state.explode?(offsets[key]||[0,0,0]):[0,0,0];const dest=V3(...target);
+ if(g.position.distanceToSquared(dest)>.0003){g.position.lerp(dest,Math.min(1,dt*5));moving=true}}
+if(!state.dirty&&!moving&&Math.abs(state.targetDist-state.dist)<.002)return;
+renderer.render(scene,camera);
+$('#stationyardCoord').textContent='AZ '+((Math.round(state.yaw*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'° / EL '+Math.round(state.pitch*180/Math.PI)+'° / ZOOM '+(27/state.dist).toFixed(1)+'×';
+for(const pin of $$('#stationyardPins button')){const position=anchors[pin.dataset.part];if(!position)continue;const G=parts[pin.dataset.part];
+const p=V3(...position).add(G.position).multiplyScalar(root.scale.x).project(camera);const x=(p.x*.5+.5)*state.w,y=(-p.y*.5+.5)*state.h;
+pin.hidden=p.z>1||x<25||y<30||x>state.w-25||y>state.h-25;pin.style.left=x+'px';pin.style.top=y+'px'}
+state.dirty=false}
+choose(V.STATION_BY_ID.E03||catalogue[0]);resize();requestAnimationFrame(frame);
+window.STS_STATIONYARD_READY=true;
+window.STS_STATIONYARD_SELECT=(id)=>{const record=V.STATION_BY_ID[id];if(record)choose(record)};
+
+/* Map model replacement: pooled, screen-space LOD. Never instantiate Three.js on atlas WebGL. */
+const atlas=V.Atlas3D;
+if(atlas?.prototype){
+ atlas.prototype.drawStation=function(st){
+  if(!this.useWebGL||!this.gl)return;
+  const p=this.project(st.xyz,this.basis);if(!p)return;
+  const x=st.xyz,dist=this.camera.dist,selected=this.selected?.id===st.id;
+  const scale=Math.max(.22,Math.min(2.1,16/Math.max(1,p.scale)));
+  const near=selected||dist<44&&p.scale>.8;
+  const medium=near||dist<100&&p.scale>.30;
+  const k=scale*(selected?1.18:1);
+  const center=(a,b,c)=>[x[0]+a*k,x[1]+b*k,x[2]+c*k];
+  const draw=(shape,a,b,c,s,color,emi=.48,alpha=1)=>this.drawMesh(this[shape],center(a,b,c),s.map(t=>t*k),color,alpha,emi);
+  const primary=selected?'#dceefa':'#9db8c9',dark='#667f90',blue='#8cc3d9',accent='#d0b582';
+  const box=(a,b,c,sx,sy,sz,col=primary)=>draw('box',a,b,c,[sx,sy,sz],col);
+  const ring=(a,b,c,r=.9,th=.16,col=primary)=>draw('torus',a,b,c,[r,th,r],col);
+  const cyl=(a,b,c,rx,ry,rz,col=primary)=>draw('cylinder',a,b,c,[rx,ry,rz],col);
+  box(0,0,0,.48,.29,1.6,dark);
+  if(!medium){if(['HUB','TERMINAL','ARRAY','CATCHER'].includes(st.type))ring(0,0,-.58,1,.16,primary);else box(0,0,.5,.90,.09,.23,primary);return}
+  switch(st.type){
+   case 'HUB':ring(0,0,-1.3,1.35,.19);ring(0,0,-1.3,1.05,.05,dark);for(let b of [-.85,.85])for(let z of [-.4,.6])box(0,b,z,1.25,.15,.32,primary);break;
+   case 'TERMINAL':ring(0,0,-1.25,1.07,.28);cyl(0,0,.15,.36,1.75,.36);for(let a of [-1,1])for(let z of [-.5,.55])box(a*.9,0,z,1.05,.20,.25);break;
+   case 'YARD':for(let a of [-1.25,1.25])for(let b of [-.76,.76])box(a,b,.5,.13,.12,2.5,dark);for(let z of [-.7,.9])box(0,1.0,z,2.8,.15,.14,accent);break;
+   case 'RELAY':cyl(0,.15,0,.19,1.8,.19);ring(0,0,-.3,.95,.08);box(-1.25,0,.8,1.85,.045,.7,dark);box(1.25,0,.8,1.85,.045,.7,dark);break;
+   case 'ARRAY':ring(0,0,-1.4,1.45,.20);cyl(0,0,-.7,.27,.8,.27,blue);for(let a of [-1,1])for(let b of [-1,1])box(a*.85,b*.63,.5,.45,.26,.70,blue);break;
+   case 'SAFETY':ring(0,0,-.2,1.05,.14);cyl(0,0,.1,.5,1.0,.5);box(1.1,-.3,.7,1.05,.35,.75);break;
+   case 'CATCHER':ring(0,0,-1.4,1.5,.12);ring(0,0,-.7,1.05,.12,dark);box(0,-.8,.8,1.6,.23,1.5);break;
+   case 'POWER':for(let z of [-.8,.2,.9])cyl(0,0,z,.5,.65,.5);for(let a of [-1,1])box(a*1.45,0,.3,2.15,.045,1.5,accent);break;
+   case 'SERVICE':for(let a of [-1,1])for(let b of [-1,1])cyl(a*.7,b*.62,.2,.22,1.5,.22);for(let a of [-1,1])box(a*1.1,0,1,1.15,.27,.24);break;
+   default:box(0,0,.7,1,.13,.5)}
+  if(!near)return;
+  if(st.type==='YARD'){for(const z of [-.8,.25,1.2])box(0,.82,z,1.9,.09,.10,accent)}
+  if(st.type==='HUB'||st.type==='TERMINAL'){for(let a of [-1,1])box(a*.6,0,1.4,.35,.38,.45,blue)}
+  if(st.type==='ARRAY'||st.type==='RELAY'){for(let a of [-1,1])box(a*.8,0,1.5,.82,.06,.45,dark)}
+  if(st.type==='SAFETY'||st.type==='CATCHER'){box(0,1.1,.5,.22,.3,.2,blue)}
+  if(st.type==='POWER'||st.type==='SERVICE'){box(0,0,1.6,.45,.38,.5,blue)}
+ };
+}
