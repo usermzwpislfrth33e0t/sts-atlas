@@ -59,12 +59,14 @@ jobs:
           source = source.replace('stationyard-v1.js?v=1.2', 'stationyard.bundle.js?v=1.5')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
-          ref_css='<link rel="stylesheet" href="./sts-reference-v2.css?v=2.1">'
-          ref_js='<script defer src="./sts-reference-v2.js?v=2.1"></script>'
+          ref_css='<link rel="stylesheet" href="./sts-reference-v2.css?v=2.2">'
+          ref_js='<script defer src="./sts-reference-v2.js?v=2.2"></script>'
           if 'sts-reference-v2.css' not in source:
               source=source.replace('</head>',ref_css+'\n</head>',1)
           if 'sts-reference-v2.js' not in source:
               source=source.replace('</body></html>',ref_js+'\n</body></html>',1)
+          source=source.replace('sts-reference-v2.js?v=2.1','sts-reference-v2.js?v=2.2')
+          source=source.replace('sts-reference-v2.css?v=2.1','sts-reference-v2.css?v=2.2')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           assert station_js in source and station_css in source
