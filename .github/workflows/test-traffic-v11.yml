@@ -108,8 +108,8 @@ jobs:
               await page.waitForTimeout(350);const current=await page.evaluate(()=>window.STS_GET_ATLAS().activeJourney.elapsedSec);
               console.log('PAUSE_'+width,JSON.stringify({before:old,after:current}));
               if(current!==old)throw Error('Pause did not halt simulation time');
-              // Regression of user's reported M01 -> S11 144 km/s/128d
-              // runaway. Hohmann economy must be years, not months.
+              // V15: user's M01 -> S11 corridor must be a plausible 2120 commercial
+              // voyage, not 144 km/s in 128d nor a 2389d Hohmann default.
               await page.locator('#journeyStop').click();
               await page.locator('#stsFusionFrom').selectOption('M01');
               await page.locator('#stsFusionTo').selectOption('S11');
@@ -132,15 +132,44 @@ jobs:
                   if(L(diff(p[i],body.xyz))<body.size*.98){violations++;break;}
                 }
                 return {days:leg?.durationSec/86400,dv:leg?.dvKmS,
-                  speed:j?.currentSpeed,waitDays:leg?.waitDays,
+                  speed:j?.currentSpeed,peak:leg?.peakKmS,powerGW:leg?.powerGW,
+                  reactorMaxGW:leg?.reactorMaxGW,propellant:leg?.propellantTonnes,
+                  energyJ:leg?.energyJ,profile:leg?.profileType,waitDays:leg?.waitDays,
                   plan:leg?.kind,ratio:curveLength/(chord||1),totalTurn,violations,
                   mode:j?.preset.mode,points:p.length};
               });
               console.log('OUTER_MARS_SATURN_'+width,JSON.stringify(outer));
-              if(!outer.days||outer.days<1000||outer.speed>80||outer.dv>90||
+              if(!outer.days||outer.days<240||outer.days>420||
+                 outer.peak>70||outer.dv>140||outer.dv<40||
+                 outer.powerGW>outer.reactorMaxGW+.01||outer.powerGW<=0||
+                 outer.propellant>600||outer.propellant<=0||
                  outer.ratio>4||outer.totalTurn>8||outer.violations||
-                 outer.mode!=='fusion'||outer.points<50)
-                  throw Error('MARS_SATURN_TRAJECTORY_INVALID '+JSON.stringify(outer));
+                 outer.mode!=='fusion'||outer.points<50||outer.profile!=='regular')
+                  throw Error('MARS_SATURN_COMMERCIAL_INVALID '+JSON.stringify(outer));
+              await page.locator('[data-orbit-profile="express"]').click();
+              await page.locator('#journeyStart').click();
+              await page.waitForTimeout(200);
+              const express=await page.evaluate(()=>{
+                const leg=window.STS_GET_ATLAS().activeJourney?.legs?.[0];
+                return {days:leg?.durationSec/86400,peak:leg?.peakKmS,
+                  power:leg?.powerGW,maxGW:leg?.reactorMaxGW,
+                  fuel:leg?.propellantTonnes,mode:leg?.profileType};
+              });
+              console.log('EXPRESS_MARS_SATURN_'+width,JSON.stringify(express));
+              if(!express.days||express.days>=outer.days||express.days>300||
+                 express.days<175||express.peak>100||
+                 express.power>express.maxGW+.01||express.mode!=='express')
+                   throw Error('MARS_SATURN_EXPRESS_INVALID '+JSON.stringify(express));
+              await page.locator('[data-orbit-profile="ballistic"]').click();
+              await page.locator('#journeyStart').click();
+              await page.waitForTimeout(200);
+              const reference=await page.evaluate(()=>{
+                 const leg=window.STS_GET_ATLAS().activeJourney?.legs?.[0];
+                 return {days:leg?.durationSec/86400,profile:leg?.profileType};
+              });
+              console.log('BALLISTIC_COMPARISON_'+width,JSON.stringify(reference));
+              if(reference.days<1700||reference.profile!=='ballistic')
+                 throw Error('HOHMANN_REFERENCE_MISSING '+JSON.stringify(reference));
               console.log('ERRORS_'+width,JSON.stringify(errors.concat(responses)));
               if(errors.length||responses.length)throw Error('Browser runtime errors');
               await page.close();
