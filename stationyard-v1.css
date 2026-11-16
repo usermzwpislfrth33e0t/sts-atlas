@@ -1,0 +1,44 @@
+/* STS / Station Engineering 01 */
+.stationyard-section{margin:26px 0 40px;border-top:1px solid #2f4050;padding-top:25px}
+.stationyard-eyebrow{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:1.6px;color:#9ac8e5}
+.stationyard-intro{display:flex;justify-content:space-between;align-items:end;gap:20px;padding:14px 0 20px}
+.stationyard-intro h3{font-size:30px;line-height:1.2;letter-spacing:-.8px;font-weight:500;color:#edf5f9;margin:3px 0 9px}
+.stationyard-intro p{font-size:12px;color:#9badbb;line-height:1.7;max-width:700px;margin:0}
+.stationyard-version{white-space:nowrap;font:9px ui-monospace,Menlo,monospace;letter-spacing:1.4px;color:#7495ab}
+.stationyard-console{grid-template-columns:minmax(0,1.85fr) minmax(270px,.75fr);min-height:640px}
+.stationyard-classes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid #304152}
+.stationyard-class{background:#0c151e;color:#9ab0bf;border:0;border-right:1px solid #2c3b49;border-bottom:1px solid #2c3b49;min-width:0;padding:12px 15px 11px;text-align:left;cursor:pointer;position:relative}
+.stationyard-class small{display:block;font:9px ui-monospace,Menlo,monospace;color:#829cb0;margin-bottom:6px;letter-spacing:.7px}
+.stationyard-class strong{display:block;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stationyard-class:hover{background:#172937;color:#e4f4ff}
+.stationyard-class[aria-pressed="true"]{background:linear-gradient(115deg,#1d3447,#152532);color:#ecf7ff}
+.stationyard-class[aria-pressed="true"]:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:#92cbea}
+.stationyard-catalogue{background:#0d1720;padding:11px 15px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #304251}
+.stationyard-catalogue label{font:10px ui-monospace,Menlo,monospace;letter-spacing:.8px;color:#89acc6;white-space:nowrap}
+.stationyard-catalogue select{background:#122331;color:#e2f0fa;font:12px ui-monospace,Menlo,monospace;border:1px solid #446073;border-radius:0;min-width:0;flex:1;padding:11px 13px;outline-offset:2px}
+.stationyard-catalogue span{font:9px ui-monospace,Menlo,monospace;color:#7696ae;white-space:nowrap}
+.stationyard-viewport{height:clamp(380px,45vw,600px);background:#08131e;min-height:380px}
+.stationyard-viewport .shipyard-sensor{z-index:1}
+.stationyard-viewport .shipyard-pin{z-index:5}
+.stationyard-note{margin:12px 0 0;font-size:11px;line-height:1.8;color:#7f95a6}
+.stationyard-error{position:absolute;z-index:5;left:12%;right:12%;top:45%;text-align:center;font-size:13px;line-height:1.7;color:#bdd5e5}
+.stationyard-console .shipyard-specs{grid-template-columns:1fr 1fr}
+.stationyard-console .shipyard-specs div:nth-child(2){grid-column:1/3}
+.stationyard-console .shipyard-specs strong{overflow-wrap:anywhere}
+.stationyard-class:focus-visible,.stationyard-catalogue select:focus-visible{outline:2px solid #a3d9f4;outline-offset:1px}
+@media(max-width:1100px){.stationyard-console{grid-template-columns:minmax(0,1fr)}.stationyard-intro h3{font-size:26px}.stationyard-viewport{height:500px}}
+@media(max-width:700px){
+.stationyard-section{margin:20px 0 33px;padding-top:17px}.stationyard-intro{display:block}.stationyard-intro h3{font-size:25px}.stationyard-version{display:block;margin-top:11px}
+.stationyard-classes{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stationyard-class{padding:11px 8px}.stationyard-class small{font-size:8px;letter-spacing:.1px}.stationyard-class strong{font-size:11px}
+.stationyard-catalogue{display:grid;grid-template-columns:1fr auto;gap:6px 9px;padding:12px}
+.stationyard-catalogue select{grid-column:1/3;font-size:11px;min-width:0;width:100%;max-width:100%}
+.stationyard-catalogue span{grid-column:2;grid-row:1}
+.stationyard-viewport{height:390px;min-height:390px}
+.stationyard-console .shipyard-sidebar{display:flex}
+.stationyard-console .shipyard-specs div:nth-child(2){grid-column:1/3}
+.stationyard-console .shipyard-toolbar{gap:8px}
+.stationyard-console .shipyard-tools{width:100%;gap:4px}
+.stationyard-console .shipyard-tool{font-size:9px;padding:9px 8px}
+.stationyard-console .shipyard-readout{font-size:9px}
+}
