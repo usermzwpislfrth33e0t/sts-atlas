@@ -228,17 +228,21 @@ function phaseAt(t){
  return 'MIDCOURSE COAST';
 }
 function transmitter(shipPos,routeLeg,elapsed,atlas){
- const active=sources.map(st=>({st,d:length(sub(st.xyz,shipPos)),power:st.electric_GWe||.4}))
- .filter(x=>x.d<30*U).sort((a,b)=>{
-   // Prefer large dedicated beam arrays and orbital power/relay stations.
-   const score=x=>x.d/Math.pow(x.power,.23)+(x.st.type==='ARRAY'?-3:x.st.type==='POWER'?-2.1:x.st.type==='RELAY'?-1.0:1);
+ const ranked=sources.map(st=>({st,d:length(sub(st.xyz,shipPos)),power:st.electric_GWe||.4}))
+  .sort((a,b)=>{
+   const score=x=>x.d/Math.pow(x.power,.23)+(x.st.type==='ARRAY'?-3*U:x.st.type==='POWER'?-2.1*U:x.st.type==='RELAY'?-1.0*U:1*U);
    return score(a)-score(b);
- });
- const source=active[0]?.st||null;
+  });
+ // Station position spread is schematic and expanded in V12. Do not silently
+ // drop a transmitter solely because the visualization scale changed.
+ // Always choose from the actual registered ARRAY/POWER/RELAY/HUB catalogue.
+ const best=ranked.filter(x=>x.d<35*U)[0]||ranked[0];
+ const source=best?.st||null;
  if(!source)return {source:null,type:'OFFLINE',power:0};
  const regional=routeLeg.from.region==='Earth'&&routeLeg.to.region==='Luna'||routeLeg.from.region==='Luna'&&routeLeg.to.region==='Earth'||routeLeg.from.region===routeLeg.to.region;
  const type=regional?'MICROWAVE / M':'LASER / L';
- const power=Math.max(.05,Math.min(7.2,(source.electric_GWe||.6)*.34))*(regional?.78:.56)*shipInfo[state.vessel].beam;
+ const loss=1/(1+best.d/(110*U));
+ const power=Math.max(.01,Math.min(7.2,(source.electric_GWe||.6)*.34))*(regional?.78:.56)*shipInfo[state.vessel].beam*loss;
  return {source,type,power};
 }
 function makeLegs(preset){
