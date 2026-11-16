@@ -1,7 +1,7 @@
 name: Bundle STS WebGL dependencies
 on:
   push:
-    paths: [.github/workflows/bundle-webgl.yml]
+    paths: [.github/workflows/bundle-webgl.yml, shipyard-v7.js, stationyard-v1.js]
   workflow_dispatch:
 permissions:
   contents: write
