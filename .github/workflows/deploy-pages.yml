@@ -71,6 +71,15 @@ jobs:
               index.write_text(source, encoding='utf-8')
           assert station_js in source and station_css in source
           assert ref_css in source and ref_js in source
+          terminal_css='<link rel="stylesheet" href="./sts-terminal-v9.css?v=9.0">'
+          terminal_js='<script defer src="./sts-terminal-v9.js?v=9.0"></script>'
+          if 'sts-terminal-v9.css' not in source:
+              source=source.replace('</head>',terminal_css+'\n</head>',1)
+          if 'sts-terminal-v9.js' not in source:
+              source=source.replace('</body></html>',terminal_js+'\n</body></html>',1)
+          if index.read_text(encoding='utf-8') != source:
+              index.write_text(source, encoding='utf-8')
+          assert terminal_css in source and terminal_js in source
           PY
       - name: Persist station and shipyard references in the source
         run: |
@@ -87,6 +96,8 @@ jobs:
           node --check shipyard-v7.js
           node --check stationyard-v1.js
           node --check sts-reference-v2.js
+          node --check sts-terminal-v9.js
+          test -s sts-terminal-v9.css
           test -s sts-reference-v2.css
           test -s stationyard-v1.css
           test -s vendor/three.module.js
