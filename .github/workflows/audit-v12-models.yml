@@ -56,6 +56,27 @@ jobs:
                 };
                 const stations=allTypes.map(type=>({type,...model(window.STS_STATIONYARD_EXPORT_MODEL(type))}));
                 const ships=['freighter','clipper','fusion','tug'].map(type=>({type,...model(window.STS_SHIPYARD_EXPORT_MODEL(type))}));
+                const freighter=window.STS_SHIPYARD_EXPORT_MODEL('freighter');
+                freighter.updateMatrixWorld(true);
+                const bounds=(key)=>{
+                  const group=freighter.children.find(g=>g.userData.part===key);
+                  if(!group)throw Error('MISSING_FREIGHTER_PART '+key);
+                  let lo=Infinity,hi=-Infinity;
+                  group.traverse(o=>{
+                    if(!o.isMesh||!o.geometry?.attributes?.position)return;
+                    const pos=o.geometry.attributes.position;
+                    for(let i=0;i<pos.count;i++){
+                      const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i),m=o.matrixWorld.elements;
+                      const worldZ=m[2]*x+m[6]*y+m[10]*z+m[14];
+                      lo=Math.min(lo,worldZ);hi=Math.max(hi,worldZ);
+                    }
+                  });
+                  return {minZ:lo,maxZ:hi};
+                };
+                const membrane=bounds('membrane'),engines=bounds('thrusters');
+                const engineClearance=membrane.minZ-engines.maxZ;
+                const plumeGap=membrane.minZ-(-9.59);
+
                 const primaries=V.BODIES.filter(b=>['STAR','PLANET'].includes(b.type)||b.id==='LUNA');
                 const intersections=[];
                 for(const route of V.ROUTES){
@@ -74,12 +95,12 @@ jobs:
                   return Math.hypot(...st.xyz.map((n,k)=>n-h.xyz[k]))<h.size;
                 }).map(x=>x.id);
                 const shipSpan=Math.max(...ships.filter(x=>x.type==='clipper').map(x=>Math.max(...x.extent)*.36));
-                return {mapScale:V.MAP_SCALE,earthRadius:V.LOOK.EARTH.size,stationTypes:stations,ships,intersectionCount:intersections.length,intersections:intersections.slice(0,12),buried,exterior,shipToEarthDiameter:shipSpan/(2*V.LOOK.EARTH.size),routeCount:V.ROUTES.length};
+                return {membrane,engines,engineClearance,plumeGap,mapScale:V.MAP_SCALE,earthRadius:V.LOOK.EARTH.size,stationTypes:stations,ships,intersectionCount:intersections.length,intersections:intersections.slice(0,12),buried,exterior,shipToEarthDiameter:shipSpan/(2*V.LOOK.EARTH.size),routeCount:V.ROUTES.length};
               });
               console.log('GEOMETRY_AUDIT_'+w,JSON.stringify(audit));
               if(audit.mapScale!==8||audit.stationTypes.length<9||audit.stationTypes.some(x=>x.invalid||x.empty||x.triangles<120||x.extent.some(e=>!Number.isFinite(e)))||
                 audit.ships.some(x=>x.invalid||x.empty||x.triangles<120)||
-                audit.buried.length||audit.exterior.length||audit.shipToEarthDiameter>.20){
+                audit.buried.length||audit.exterior.length||audit.shipToEarthDiameter>.20||audit.engineClearance<1.5||audit.plumeGap<4.0){
                   throw Error('STATION_OR_SHIP_INTEGRITY_FAILED '+JSON.stringify(audit));
               }
               if(audit.intersectionCount>0)throw Error('PLANET_INTERSECTIONS '+JSON.stringify(audit.intersections));
