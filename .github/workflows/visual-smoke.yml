@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: node --check shipyard-v5.js
+      - run: |
+          node --check shipyard-v5.js
+          node --check shipyard-v7.js
       - run: |
           npm install --no-save --ignore-scripts playwright-core@1.57.0
           which google-chrome || which chromium || true
@@ -29,7 +31,8 @@ jobs:
             await page.goto('http://localhost:8765/',{waitUntil:'domcontentloaded',timeout:30000});
             await page.addStyleTag({content:'#portal,#boot{display:none!important}#app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #vesselsView{display:block!important;opacity:1!important;visibility:visible!important;position:static!important} #shipViewport{height:600px!important;min-height:600px!important}'});
             await page.evaluate(()=>{document.querySelector('#vesselsView')?.classList.add('active');});
-            await page.waitForTimeout(400);
+            await page.waitForFunction(()=>window.STS_SHIPYARD_V7_READY,{timeout:25000});
+            await page.waitForTimeout(650);
             const viewport=page.locator('#shipViewport');
             const size=await viewport.boundingBox();
             console.log('VIEWPORT_SIZE',JSON.stringify(size));
