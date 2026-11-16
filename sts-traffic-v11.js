@@ -77,7 +77,9 @@ function drawEngineering(atlas,kind,key,position,scale,axes,emissive=.25){
 const drawStationOriginal=Atlas.prototype.drawStation;
 Atlas.prototype.drawStation=function(st){
  const focus=this.selected?.id===st.id,projected=this.project(st.xyz,this.basis);
- if(!focus||!projected||!this.useWebGL||this.camera.dist>115)return drawStationOriginal.call(this,st);
+ const currentLeg=this.activeJourney?.legs?.[this.activeJourney.leg||0];
+ const journeyRelevant=!currentLeg||currentLeg.from.id===st.id||currentLeg.to.id===st.id;
+ if(!focus||!journeyRelevant||!projected||!this.useWebGL||this.camera.dist>115)return drawStationOriginal.call(this,st);
  const target=clamp(Math.min(this.width,this.height)*.20,75,116);
  const scale=clamp(target/(projected.scale*15),.035,.85);
  if(!drawEngineering(this,'station',st.type,st.xyz,scale,null,.33))drawStationOriginal.call(this,st);
@@ -96,7 +98,7 @@ Atlas.prototype.drawShip=function(center,forward){
  const axes=[vec(mul(x,cx),mul(dir,-sx)),y,vec(mul(dir,cx),mul(x,sx))];
  const target=clamp(Math.min(this.width,this.height)*.33,116,175);
  const scale=clamp(target/(Math.max(.5,projection.scale)*14),.06,3.5);
- if(!drawEngineering(this,'ship',key,center,scale,axes,.34))drawShipOriginal.call(this,center,forward);
+ if(!drawEngineering(this,'ship',key,center,scale,axes,.55))drawShipOriginal.call(this,center,forward);
 };
 function deriveFusionNodes(){
  return V.STATIONS.filter(s=>['HUB','TERMINAL','YARD'].includes(s.type)&&
@@ -373,6 +375,10 @@ Atlas.prototype.renderOverlay=function(){
  c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);
  const fusion=this.activeJourney?.preset?.mode==='fusion';
  const txt=fusion?'FUSION VESSEL / IN TRANSIT':'BEAM SAIL / IN TRANSIT';
+ // Erase the previous Atlas label first; the old text is wider than ours
+ // and otherwise leaves stray letters after the updated mode label.
+ const oldX=Math.min(w-180,ship.x+10),oldY=Math.max(35,ship.y-18);
+ c.fillStyle='#071524f3';c.fillRect(oldX-6,oldY-15,215,23);
  const labelX=clamp(ship.x+20,8,Math.max(8,w-195)),labelY=clamp(ship.y-18,30,h-55);
  c.font='10px ui-monospace,monospace';const tw=Math.min(185,c.measureText(txt).width+16);
  c.fillStyle='#071524ea';c.fillRect(labelX-5,labelY-13,tw,18);
