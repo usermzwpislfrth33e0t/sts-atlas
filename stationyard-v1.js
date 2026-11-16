@@ -185,6 +185,11 @@ for(let z=2;z<9;z+=1.25){beam(dock,[-2.0,-1.1,z],[2,-1.1,z],.06,'frame');box(doc
 tube(dock,[0,0,3.2],[0,0,7.5],.73,'frame');for(const z of [3,5,7])ring(dock,.82,.08,z,'ceramic',28);
 for(const z of [2.1,5.3,8.2]){beam(gantry,[-4,2.75,z],[4,2.75,z],.17,'hazard');beam(gantry,[0,2.75,z],[0,1.2,z],.055,'hazard');box(gantry,[0,1.18,z],[.46,.54,.58],'alloy');
 for(const x of [-3.5,3.5])beam(gantry,[x,2.35,z],[x,2.9,z],.10,'hazard')}
+ for(const x of [-3.6,3.6]){
+  beam(gantry,[x,2.75,1],[x,2.75,9.7],.12,'frame',10);
+  for(const z of [2.1,5.3,8.2])
+   beam(gantry,[x,2.75,z],[x,2.35,z],.095,'alloy',8);
+ }
 for(let z=-7;z<-1.2;z+=1.7){box(industry,[1.5,0,z],[1.6,1.0,1.1],'alloy');box(industry,[1.5,.52,z],[1.4,.05,.9],'dark')}
 tanks(service,-5.6,6,.43);panels(service,0,-5.8,5.2,2.7,-1.8);beacon(service,[0,1.6,-6]);
 return {dock:[3.3,1.6,6],gantry:[0,2.75,5.3],industry:[1.2,1,-3.3],service:[-1.4,-.9,-5.8]}}
@@ -193,7 +198,15 @@ lattice(sensor,-5,3.3,.28,11);segmentedRing(sensor,2.7,-2.5,'frame');for(let i=0
 beam(sensor,[0,-3.8,-2.5],[0,4.7,-2.5],.074,'frame');beacon(sensor,[0,4.7,-2.5]);
 for(const p of [[1.2,1.2,1.4],[-1.3,1.6,.3],[.5,-1.8,1.6]])dish(dishes,p,p[0]<0?.68:1.03,.32);
 lattice(arrays,3,9,.45,7);
-for(const y of [-1.5,1.5]){box(arrays,[0,y,7],[8.7,.055,2.1],'solar');for(let i=0;i<10;i++)beam(arrays,[-4.3+i*.93,y+.04,5.98],[-4.3+i*.93,y+.04,8.02],.017,'blue',6)}
+for(const y of [-1.5,1.5]){
+ box(arrays,[0,y,7],[8.7,.055,2.1],'solar');
+ for(let i=0;i<10;i++)beam(arrays,[-4.3+i*.93,y+.04,5.98],[-4.3+i*.93,y+.04,8.02],.017,'blue',6);
+ for(const z of [6.1,7.9]){
+  beam(arrays,[0,Math.sign(y)*.43,z],[0,y,z],.084,'alloy',10);
+  beam(arrays,[-2.7,y,z],[2.7,y,z],.047,'frame',10);
+ }
+ beam(arrays,[0,Math.sign(y)*.43,5.5],[0,y,8],.048,'alloy',8);
+}
 pressure(core,-5,-3.6,.62);pressure(core,1.25,3.6,.55);controlPod(core,[0,0,-5.4],.65);beacon(core,[0,.88,2.5]);
 return {sensor:[-2.1,1.6,-2.5],dishes:[1.2,1.6,1.4],arrays:[3.5,1.4,7],core:[0,.6,2.2]}}
 function array(){const frame=part('frame'),emit=part('emitters'),optics=part('optics'),power=part('power');
@@ -209,12 +222,20 @@ for(const side of [-1,1]){
   orb(emit,[x,side*y,z],.11,'alloy');
  }}
 pressure(power,5.6,8.4,.84,'alloy');panels(power,0,6.8,8.1,3.1,-2.3);controlPod(power,[0,1.4,-4.1],.9);beacon(power,[0,1.8,7.6]);
+ for(const x of [-.55,.55]){
+  beam(power,[x,.65,-4.1],[x,1.15,-4.1],.08,'frame');
+  beam(power,[x,.4,-4.7],[x,1.3,-4.1],.052,'alloy');
+ }
 return {frame:[-3.2,2.8,-5.0],emitters:[2.1,1.3,2.4],optics:[0,.5,-2.1],power:[3.5,-2.3,6.8]}}
 function safety(){const sensors=part('sensors'),control=part('control'),rescue=part('rescue'),arms=part('arms');
 segmentedRing(sensors,3.3,-1.0,'frame');for(let i=0;i<12;i++){const a=i*Math.PI/6;beam(sensors,[Math.cos(a)*3.3,Math.sin(a)*3.3,-1.0],[Math.cos(a)*3.3,Math.sin(a)*3.3,1],.06,'alloy')}
 dish(sensors,[.8,2.35,1.8],.82,.3);beacon(sensors,[0,3.6,.2]);
 pressure(control,-2.6,2.8,1.07);controlPod(control,[0,1.12,-1.5],.85);
 for(const z of [-1.2,1.1]){box(rescue,[1.85,-1.0,z],[2.4,1.05,1.1],'white');box(rescue,[3.1,-.95,z],[.10,.76,.90],'hazard');for(const x of [1,2.6])beacon(rescue,[x,-.37,z])}
+ for(const z of [-1.2,1.1])for(const y of [-1.3,-.6]){
+  beam(rescue,[.67,y,z],[2.65,y,z],.068,'alloy',9);
+  beam(rescue,[.60,y,z],[0,.20,z],.077,'frame',10);
+ }
 box(rescue,[-1.7,-1.4,1],[3.0,.26,1.35],'frame');for(const x of [-2.6,-.8])box(rescue,[x,-1.12,1],[.74,.54,.88],'ceramic');
 const P=[[-1.15,-1.4,-.5],[-2.8,-2.0,1.6],[-3.7,-2.5,3.0],[-4.1,-2.4,4.1]];
 for(let i=0;i<P.length-1;i++){beam(arms,P[i],P[i+1],.13,'alloy');orb(arms,P[i+1],.22,'hazard')}
