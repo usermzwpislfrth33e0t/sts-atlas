@@ -373,11 +373,17 @@ Atlas.prototype.renderGL=function(){
  // reverse heading makes retro-burn visible along the travel direction.
  if(j&&this.stsShipAxes&&(state.phase==='ACCELERATION'||state.phase==='DECELERATION')){
    const kind=j.preset.vessel||state.vessel,axis=this.stsShipAxes[2],sz=this.stsShipWorldScale||.35;
-   const engineZ=kind==='fusion'?8.8:kind==='clipper'?4.91:4.41;
-   const origin=vec(this.shipPos,mul(axis,-engineZ*sz));
+   const engineZ=kind==='fusion'?8.8:kind==='clipper'?4.91:9.59;
    const exhaust=mul(axis,-(state.phase==='DECELERATION'?2.45:1.8));
-   const tracer=updateGpuLine(this,'engine',[origin,vec(origin,exhaust)]);
-   this.drawLine(tracer,kind==='fusion'?'#9cdcff':'#94d6ec',.72,1);
+   // Mirror the two physical nozzle positions; both exhaust vectors always
+   // point rearward, entirely outside the +Z receiver membrane envelope.
+   const side=this.stsShipAxes[0];
+   const offsets=kind==='freighter'?[-.43,.43]:[0];
+   for(const [i,x] of offsets.entries()){
+     const origin=vec(vec(this.shipPos,mul(axis,-engineZ*sz)),mul(side,x*sz));
+     const tracer=updateGpuLine(this,'engine'+i,[origin,vec(origin,exhaust)]);
+     this.drawLine(tracer,kind==='fusion'?'#9cdcff':'#94d6ec',.72,1);
+   }
  }
  if(j?.preset?.mode==='sail'&&state.showBeam&&j.activeBeam?.source){
   const source=j.activeBeam.source,laser=j.activeBeam.type.startsWith('LASER');
