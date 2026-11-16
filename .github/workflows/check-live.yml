@@ -1,0 +1,45 @@
+name: Production reachability test
+on:
+  push:
+    paths: [.github/workflows/check-live.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch publicly deployed site (do not trust deployment status)
+        run: |
+          set +e
+          for url in 'https://usermzwpislfrth33e0t.github.io/sts-atlas/' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/stationyard-v1.js?v=1.2' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/vendor/three.module.js'; do
+            echo "LIVE URL: $url"
+            curl -vIL --connect-timeout 15 --max-time 35 --retry 2 --retry-delay 3 "$url" 2>&1 | tail -n 35
+            echo "BODY STATUS:"
+            curl -LsS --connect-timeout 15 --max-time 45 -o /tmp/response -w 'status=%{http_code} size=%{size_download} redirected=%{url_effective} content_type=%{content_type}\n' "$url"
+            head -c 80 /tmp/response | tr '\n' ' ' || true
+            echo
+          done
+      - name: Validate public homepage with actual remote browser
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          node <<'JS'
+          const {chromium}=require('playwright-core');
+          const {execSync}=require('child_process');
+          (async()=>{
+          const binary=execSync('which google-chrome || which chromium').toString().trim();
+          const browser=await chromium.launch({headless:true,executablePath:binary,args:['--no-sandbox','--disable-gpu-sandbox']});
+          const page=await browser.newPage({viewport:{width:900,height:740},deviceScaleFactor:1});
+          page.on('pageerror',e=>console.log('JSERROR',e.message));
+          page.on('requestfailed',req=>console.log('NETWORK_FAILURE',req.url(),req.failure()?.errorText));
+          page.on('response',res=>{if(res.status()>=400)console.log('HTTP_ERROR',res.status(),res.url())});
+          try{
+          const res=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/',{waitUntil:'domcontentloaded',timeout:50000});
+          console.log('LIVE_BROWSER',JSON.stringify({status:res?.status(),url:page.url(),title:await page.title(),bodyLen:(await page.locator('body').innerText()).length,portalVisible:await page.locator('#portal').isVisible(),stationsReady:await page.evaluate(()=>window.STS_STATIONYARD_READY===true)}));
+          await page.waitForTimeout(4000);
+          console.log('LIVE_AFTER_4S',JSON.stringify({url:page.url(),view:await page.locator('.view.active').count(),body:await page.locator('body').innerText().then(s=>s.slice(0,250))}));
+          }catch(e){console.log('LIVE_BROWSER_FAILURE',String(e))}
+          await browser.close();
+          })().catch(e=>{console.error(e);process.exitCode=1});
+          JS
