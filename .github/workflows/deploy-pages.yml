@@ -25,6 +25,37 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Move embedded BGM out of the initial HTML
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          index=Path('index.html')
+          source=index.read_text(encoding='utf-8')
+          asset=Path('assets/sts-ambient.mp3')
+          original='src="data:audio/mpeg;base64,'
+          audio=source.find('<audio id="bgm"')
+          if audio<0:
+              raise SystemExit('STS music element is missing')
+          pos=source.find(original,audio)
+          if pos>=0:
+              first=pos+len(original)
+              last=source.find('"',first)
+              if last<0:
+                  raise SystemExit('Unclosed BGM asset')
+              audio_bytes=base64.b64decode(source[first:last],validate=True)
+              if len(audio_bytes)<100_000 or not (audio_bytes[:3]==b'ID3' or audio_bytes[:2] in (b'\xff\xfb',b'\xff\xf3')):
+                  raise SystemExit('Unexpected source BGM format')
+              asset.parent.mkdir(parents=True,exist_ok=True)
+              asset.write_bytes(audio_bytes)
+              source=source[:pos]+'src="./assets/sts-ambient.mp3"'+source[last+1:]
+              index.write_text(source,encoding='utf-8')
+              print('MOVED_BGM_BYTES',len(audio_bytes),'OLD_HTML_BYTES',last-pos,'NEW_HTML_BYTES',index.stat().st_size)
+          else:
+              print('BGM_ALREADY_EXTERNAL')
+          assert asset.is_file() and asset.stat().st_size>100_000
+          assert original not in index.read_text(encoding='utf-8')
+          PY
       - name: Attach STS shipyard and station engineering modules
         run: |
           python3 - <<'PY'
@@ -71,14 +102,16 @@ jobs:
               index.write_text(source, encoding='utf-8')
           assert station_js in source and station_css in source
           assert ref_css in source and ref_js in source
-          terminal_css='<link rel="stylesheet" href="./sts-terminal-v9.css?v=9.1">'
-          terminal_js='<script defer src="./sts-terminal-v9.js?v=9.1"></script>'
+          terminal_css='<link rel="stylesheet" href="./sts-terminal-v9.css?v=10.0">'
+          terminal_js='<script defer src="./sts-terminal-v9.js?v=10.0"></script>'
           if 'sts-terminal-v9.css' not in source:
               source=source.replace('</head>',terminal_css+'\n</head>',1)
           if 'sts-terminal-v9.js' not in source:
               source=source.replace('</body></html>',terminal_js+'\n</body></html>',1)
-          source=source.replace('sts-terminal-v9.css?v=9.0','sts-terminal-v9.css?v=9.1')
-          source=source.replace('sts-terminal-v9.js?v=9.0','sts-terminal-v9.js?v=9.1')
+          source=source.replace('sts-terminal-v9.css?v=9.0','sts-terminal-v9.css?v=10.0')
+          source=source.replace('sts-terminal-v9.js?v=9.0','sts-terminal-v9.js?v=10.0')
+          source=source.replace('sts-terminal-v9.css?v=9.1','sts-terminal-v9.css?v=10.0')
+          source=source.replace('sts-terminal-v9.js?v=9.1','sts-terminal-v9.js?v=10.0')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           assert terminal_css in source and terminal_js in source
@@ -88,8 +121,8 @@ jobs:
           if ! git diff --quiet -- index.html; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add index.html
-            git commit -m "Include station engineering 3D assets in published index.html"
+            git add index.html assets/sts-ambient.mp3
+            git commit -m "Move 5MB BGM to lazy asset and publish STS terminal V10"
             git push origin HEAD:main
           fi
       - name: Validate shipyard renderer syntax
@@ -100,6 +133,8 @@ jobs:
           node --check sts-reference-v2.js
           node --check sts-terminal-v9.js
           test -s sts-terminal-v9.css
+          test -s assets/sts-ambient.mp3
+          test $(stat -c%s index.html) -lt 450000
           test -s sts-reference-v2.css
           test -s stationyard-v1.css
           test -s vendor/three.module.js
