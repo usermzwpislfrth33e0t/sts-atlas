@@ -25,44 +25,23 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - name: Move embedded BGM out of the initial HTML
+      - name: Verify clean external audio source
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import base64
+          import re
           index=Path('index.html')
           source=index.read_text(encoding='utf-8')
+          expected='<audio id="bgm" preload="none" data-src="./assets/sts-ambient.mp3" loop playsinline></audio>'
+          match=re.search(r'<audio\s+id="bgm"[^>]*></audio>',source)
+          if not match:
+              raise SystemExit('BGM element missing')
+          if match.group(0)!=expected:
+              raise SystemExit('BGM source was unexpectedly altered: '+match.group(0)[:250])
           asset=Path('assets/sts-ambient.mp3')
-          original='src="data:audio/mpeg;base64,'
-          audio=source.find('<audio id="bgm"')
-          if audio<0:
-              raise SystemExit('STS music element is missing')
-          pos=source.find(original,audio)
-          if pos>=0:
-              first=pos+len(original)
-              last=source.find('"',first)
-              if last<0:
-                  raise SystemExit('Unclosed BGM asset')
-              audio_bytes=base64.b64decode(source[first:last],validate=True)
-              if len(audio_bytes)<100_000 or not (audio_bytes[:3]==b'ID3' or audio_bytes[:2] in (b'\xff\xfb',b'\xff\xf3')):
-                  raise SystemExit('Unexpected source BGM format')
-              asset.parent.mkdir(parents=True,exist_ok=True)
-              asset.write_bytes(audio_bytes)
-              source=source[:pos]+'src="./assets/sts-ambient.mp3"'+source[last+1:]
-              index.write_text(source,encoding='utf-8')
-              print('MOVED_BGM_BYTES',len(audio_bytes),'OLD_HTML_BYTES',last-pos,'NEW_HTML_BYTES',index.stat().st_size)
-          else:
-              print('BGM_ALREADY_EXTERNAL')
-          source=index.read_text(encoding='utf-8')
-          eager='src="./assets/sts-ambient.mp3"'
-          lazy='data-src="./assets/sts-ambient.mp3"'
-          if eager in source:
-              source=source.replace(eager,lazy,1)
-              index.write_text(source,encoding='utf-8')
-              print('BGM_AUDIO_SRC_DEFERRED')
-          assert lazy in index.read_text(encoding='utf-8')
-          assert asset.is_file() and asset.stat().st_size>100_000
-          assert original not in index.read_text(encoding='utf-8')
+          assert asset.is_file() and asset.stat().st_size>100_000, 'BGM audio asset missing'
+          assert 'data-data-src' not in source
+          print('BGM_OK',asset.stat().st_size,'bytes')
           PY
       - name: Attach STS shipyard and station engineering modules
         run: |
