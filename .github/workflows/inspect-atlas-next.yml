@@ -1,0 +1,26 @@
+name: STS atlas diagnostics
+on:
+  push:
+    paths: [.github/workflows/inspect-atlas-next.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract key layout and renderer methods
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          keys=["class Atlas3D{","drawStation(st){","renderGL(){","renderOverlay(){","renderFallback(){","resize(){","render(){","drawShip(center","setFocus(","selectNode(","drawLabels(","this.drawStation(","function renderInspector(obj)","function renderRegistry(","function go(next","const BODIES=","#atlasView",".atlas-layout",".atlas-canvas"]
+          for key in keys:
+            p=s.find(key)
+            print('KEY',key,p)
+            if p>=0:
+              n=6500 if key in ['renderGL(){','renderOverlay(){','renderFallback(){','function renderInspector(obj)','function renderRegistry('] else 3500
+              print('SOURCE',repr(s[p:p+n]))
+          PY
