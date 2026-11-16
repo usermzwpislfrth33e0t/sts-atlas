@@ -2,7 +2,7 @@
    Shared engineering models; independent fusion navigation; beam links;
    scenario telemetry. Rendered inside the existing Atlas WebGL context. */
 (()=>{'use strict';
-const V=window.STS3D,Atlas=V?.Atlas3D,drawer=document.getElementById('journeyDrawer');
+const V=window.STS3D,Atlas=V?.Atlas3D,drawer=document.getElementById('journeyDrawer'),U=V?.MAP_SCALE||8;
 if(!Atlas||!drawer){console.warn('STS traffic: Atlas module unavailable');return;}
 const $=s=>document.querySelector(s),q=s=>drawer.querySelector(s);
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),TAU=2*Math.PI;
@@ -39,27 +39,27 @@ function gpuModel(atlas,key,kind){
  try{root=factory(key)}catch(err){console.warn('STS 3D model transfer:',key,err);return null}
  if(!root)return null;
  root.updateMatrixWorld(true);
- const bucket=new Map();
- let triangles=0;
+ const bucket=new Map();let triangles=0;
  root.traverse(o=>{
   if(!o.isMesh||!o.geometry?.attributes?.position)return;
-  const pos=o.geometry.attributes.position,idx=o.geometry.index?.array,mat=Array.isArray(o.material)?o.material[0]:o.material;
-  const color='#'+(mat?.color?.getHexString?.()||'b8cbd8');
-  let dst=bucket.get(color);if(!dst){dst=[];bucket.set(color,dst)}
+  const geo=o.geometry,pos=geo.attributes.position,vColors=geo.attributes.color;
+  const idx=geo.index?.array,mat=Array.isArray(o.material)?o.material[0]:o.material;
+  const color='#'+(mat?.color?.getHexString?.()||'b8cbd8'),base=mat?.color||{r:.73,g:.8,b:.86};
+  let dst=bucket.get(color);if(!dst){dst={p:[],c:[]};bucket.set(color,dst)}
   const M=o.matrixWorld.elements,n=idx?idx.length:pos.count;
-  // Position already contains all part-level rotations and translations.
   for(let i=0;i<n;i++){
    const j=idx?idx[i]:i,x=pos.getX(j),y=pos.getY(j),z=pos.getZ(j);
-   dst.push(M[0]*x+M[4]*y+M[8]*z+M[12],
-            M[1]*x+M[5]*y+M[9]*z+M[13],
-            M[2]*x+M[6]*y+M[10]*z+M[14]);
+   dst.p.push(M[0]*x+M[4]*y+M[8]*z+M[12],M[1]*x+M[5]*y+M[9]*z+M[13],M[2]*x+M[6]*y+M[10]*z+M[14]);
+   dst.c.push(base.r*(vColors&&mat?.vertexColors?vColors.getX(j):1),
+              base.g*(vColors&&mat?.vertexColors?vColors.getY(j):1),
+              base.b*(vColors&&mat?.vertexColors?vColors.getZ(j):1));
   }
   triangles+=Math.floor(n/3);
  });
- const parts=[];for(const [color,positions] of bucket){
-  if(positions.length<9)continue;
-  const mesh=atlas.makeMesh({p:positions,c:[]});
-  if(mesh)parts.push({mesh,color});
+ const parts=[];for(const [color,data] of bucket){
+  if(data.p.length<9)continue;
+  const mesh=atlas.makeMesh(data);
+  if(mesh){mesh.colors=new Map([[color,mesh.c]]);parts.push({mesh,color})}
  }
  releaseModel(root);
  const assembled={parts,triangles};
@@ -76,29 +76,31 @@ function drawEngineering(atlas,kind,key,position,scale,axes,emissive=.25){
 }
 const drawStationOriginal=Atlas.prototype.drawStation;
 Atlas.prototype.drawStation=function(st){
- const focus=this.selected?.id===st.id,projected=this.project(st.xyz,this.basis);
- const currentLeg=this.activeJourney?.legs?.[this.activeJourney.leg||0];
- const journeyRelevant=!currentLeg||currentLeg.from.id===st.id||currentLeg.to.id===st.id;
- if(!focus||!journeyRelevant||!projected||!this.useWebGL||this.camera.dist>115)return drawStationOriginal.call(this,st);
- const target=clamp(Math.min(this.width,this.height)*.20,75,116);
- const scale=clamp(target/(projected.scale*15),.035,.85);
- if(!drawEngineering(this,'station',st.type,st.xyz,scale,null,.33))drawStationOriginal.call(this,st);
+ if(!this.useWebGL||!this.basis)return drawStationOriginal.call(this,st);
+ const projection=this.project(st.xyz,this.basis);
+ if(!projection||projection.x<-60||projection.x>this.width+60||projection.y<-60||projection.y>this.height+60)return;
+ const selected=this.selected?.id===st.id,leg=this.activeJourney?.legs?.[this.activeJourney.leg||0];
+ const nearbyNode=leg&&(leg.from.id===st.id||leg.to.id===st.id||state.sender?.id===st.id);
+ const close=this.camera.dist<30*U&&length(sub(st.xyz,this.camera.target))<18*U;
+ // The distant station marker is drawn by Atlas renderOverlay instead of the
+ // former inaccurate, oversized box-and-torus 3D proxy.
+ if(!(selected||nearbyNode)||!close)return;
+ if(!drawEngineering(this,'station',st.type,st.xyz,selected?.34:.25,null,.56))
+   drawStationOriginal.call(this,st);
 };
 const drawShipOriginal=Atlas.prototype.drawShip;
 Atlas.prototype.drawShip=function(center,forward){
  if(!center||!this.basis)return;
  const key=this.activeJourney?.preset.vessel||state.vessel;
- const projection=this.project(center,this.basis);
- if(!projection||!this.useWebGL)return drawShipOriginal.call(this,center,forward);
- const dir=unit(forward||[0,0,1]);
- const pole=Math.abs(dir[1])>.94?[1,0,0]:[0,1,0];
- const x=unit(cross(pole,dir)),y=unit(cross(dir,x));
- const angle=clamp(this.shipFlipAngle||0,0,Math.PI);
- const cx=Math.cos(angle),sx=Math.sin(angle);
+ const dir=unit(forward||[0,0,1]),up=Math.abs(dir[1])>.94?[1,0,0]:[0,1,0];
+ const x=unit(cross(up,dir)),y=unit(cross(dir,x));
+ // Models use engineering +Z as bow; flip changes the engine vector, not velocity.
+ const angle=clamp(this.shipFlipAngle||0,0,Math.PI),cx=Math.cos(angle),sx=Math.sin(angle);
  const axes=[vec(mul(x,cx),mul(dir,-sx)),y,vec(mul(dir,cx),mul(x,sx))];
- const target=clamp(Math.min(this.width,this.height)*.33,116,175);
- const scale=clamp(target/(Math.max(.5,projection.scale)*14),.06,3.5);
- if(!drawEngineering(this,'ship',key,center,scale,axes,.55))drawShipOriginal.call(this,center,forward);
+ const scale=key==='fusion'?.37:key==='clipper'?.36:.34;
+ this.stsShipWorldScale=scale;this.stsShipAxes=axes;
+ if(!this.useWebGL||!drawEngineering(this,'ship',key,center,scale,axes,.68))
+   drawShipOriginal.call(this,center,forward);
 };
 function deriveFusionNodes(){
  return V.STATIONS.filter(s=>['HUB','TERMINAL','YARD'].includes(s.type)&&
@@ -108,7 +110,7 @@ function deriveFusionNodes(){
 function option(st){return '<option value="'+st.id+'">'+escape(st.id+' / '+st.name+' · '+st.region)+'</option>'}
 const panel=document.createElement('section');panel.id='stsTrafficPanel';panel.className='sts11-panel';
 panel.innerHTML=
- '<div class="sts11-heading"><span>TRAFFIC CONTROL / V11</span><span>REFERENCE / 2120</span></div>'+
+ '<div class="sts11-heading"><span>TRAFFIC CONTROL / V12</span><span>REFERENCE / 2120</span></div>'+
  '<div class="sts11-label">TRANSPORT MODE / 추진 방식</div>'+
  '<div class="sts11-modes" role="group" aria-label="추진 방식"><button data-mode="sail" aria-pressed="true">BEAM-SAIL <small>정거장 송전망</small></button><button data-mode="fusion" aria-pressed="false">FUSION <small>독립 항행 회랑</small></button></div>'+
  '<div class="sts11-label">VESSEL MODEL / 선박 형식</div><div class="sts11-ships" role="group" aria-label="선박 형식">'+
