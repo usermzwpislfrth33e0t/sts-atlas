@@ -112,10 +112,10 @@ jobs:
           assert guarded in source
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
-          source=source.replace('sts-traffic-v11.js?v=11.0','sts-traffic-v11.js?v=14.0')
-          source=source.replace('sts-traffic-v11.js?v=11.1','sts-traffic-v11.js?v=14.0')
-          source=source.replace('sts-traffic-v11.css?v=11.1','sts-traffic-v11.css?v=14.0')
-          source=source.replace('sts-traffic-v11.css?v=11.0','sts-traffic-v11.css?v=14.0')
+          source=source.replace('sts-traffic-v11.js?v=11.0','sts-traffic-v11.js?v=15.0')
+          source=source.replace('sts-traffic-v11.js?v=11.1','sts-traffic-v11.js?v=15.0')
+          source=source.replace('sts-traffic-v11.css?v=11.1','sts-traffic-v11.css?v=15.0')
+          source=source.replace('sts-traffic-v11.css?v=11.0','sts-traffic-v11.css?v=15.0')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source,encoding='utf-8')
           assert terminal_css in source and terminal_js in source
@@ -134,7 +134,7 @@ jobs:
           test -s stationyard-v1.css
           node --check sts-traffic-v11.js
           test -s sts-traffic-v11.css
-          grep -q 'sts-traffic-v11.js?v=14.0' index.html
+          grep -q 'sts-traffic-v11.js?v=15.0' index.html
           grep -q 'stationyard-v1.js?v=12.0' index.html
           test -s vendor/three.module.js
           node --check stationyard.bundle.js
