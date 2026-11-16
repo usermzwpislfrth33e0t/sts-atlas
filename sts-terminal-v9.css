@@ -128,3 +128,11 @@
 .sts9-action{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .sts9-direct-link{display:inline-flex;align-items:center;padding:10px 1px;margin:13px 0 0;border-bottom:1px solid #49677b;color:#9bbfd5;font:10px ui-monospace,Menlo,monospace;letter-spacing:.7px;text-decoration:none;min-height:38px;touch-action:manipulation}
 .sts9-direct-link:hover,.sts9-direct-link:focus-visible{color:#deeff9;border-color:#b5d6e8}
+
+/* V10: one visible boot sequence, never the retired 2-second loader. */
+html.sts10-terminal #boot.boot-sequence{display:none!important;visibility:hidden!important;pointer-events:none!important}
+html.sts10-terminal #sts9BootOverlay{z-index:2147483000}
+html.sts10-terminal #sts9BootOverlay.sts9-boot-open{visibility:visible;opacity:1}
+html.sts10-terminal .sts9-boot-task.is-active{border-left:2px solid #80b8d5;padding-left:7px;margin-left:-9px}
+html.sts10-terminal .sts9-boot-finish .sts9-boot-progress-track i{background:#b2d8d5}
+@media(prefers-reduced-motion:reduce){html.sts10-terminal .sts9-boot{transition:none!important}}
