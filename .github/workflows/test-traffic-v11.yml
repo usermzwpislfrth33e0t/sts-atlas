@@ -67,6 +67,19 @@ jobs:
                 const data=img.toString('base64');console.log('SCREENSHOT_START '+data.length);
                 for(let pos=0;pos<data.length;pos+=5000)console.log('SCREENSHOT_CHUNK '+pos+' '+data.slice(pos,pos+5000));
                 console.log('SCREENSHOT_END');
+                await page.evaluate(()=>{
+                  const a=window.STS_GET_ATLAS();
+                  document.getElementById('journeyDrawer').style.display='none';
+                  if(a.shipPos){a.camera.target=a.shipPos.slice();a.camera.destTarget=a.shipPos.slice();a.camera.dist=22;a.camera.destDist=22}
+                  document.getElementById('atlasView').scrollIntoView({block:'start',behavior:'instant'});
+                });
+                await page.waitForTimeout(600);
+                const mapImg=await page.screenshot({type:'jpeg',quality:65,animations:'disabled'});
+                const mapData=mapImg.toString('base64');console.log('MAPSHOT_START '+mapData.length);
+                for(let pos=0;pos<mapData.length;pos+=5000)console.log('MAPSHOT_CHUNK '+pos+' '+mapData.slice(pos,pos+5000));
+                console.log('MAPSHOT_END');
+                await page.evaluate(()=>{document.getElementById('journeyDrawer').style.display=''});
+
               }
               if(!sail.diag.journey||sail.diag.vessel!=='clipper'||!sail.diag.shipModels.some(m=>m.id==='clipper'&&m.triangles>1000))
                 throw Error('Detailed clipper geometry not rendered');
