@@ -1,7 +1,7 @@
 name: Verify STS V11 shared model and traffic simulations
 on:
   push:
-    paths: [.github/workflows/test-traffic-v11.yml]
+    paths: [.github/workflows/test-traffic-v11.yml, sts-traffic-v11.js, sts-traffic-v11.css, shipyard-v7.js, stationyard-v1.js]
   workflow_dispatch:
 permissions:
   contents: read
