@@ -19,7 +19,7 @@ const shipInfo={
  fusion:{label:'Fusion transport',kr:'핵융합 수송선',drive:'FUSION / D–³He',time:1,power:3.8,mass:840},
  tug:{label:'Service cutter',kr:'핵융합 지원선 (시연)',drive:'FUSION / AUXILIARY',time:.73,power:1.8,mass:140}
 };
-const state={mode:'sail',vessel:'freighter',profile:'economy',scale:1,paused:false,follow:true,ready:false,showBeam:true,sender:null,beamGW:0,energyTJ:0,phase:'STANDBY',activeHours:0,lastPaint:0,final:null};
+const state={mode:'sail',vessel:'freighter',profile:'regular',scale:1,paused:false,follow:true,ready:false,showBeam:true,sender:null,beamGW:0,energyTJ:0,phase:'STANDBY',activeHours:0,lastPaint:0,final:null};
 window.STS_TRAFFIC_V11_STATE=state;
 const modeLabel=m=>m==='fusion'?'INDEPENDENT FUSION CORRIDOR':'STS BEAM NETWORK';
 const sources=V.STATIONS.filter(s=>['ARRAY','RELAY','POWER','HUB'].includes(s.type)&&((s.electric_GWe||0)>.18));
@@ -110,28 +110,28 @@ function deriveFusionNodes(){
 function option(st){return '<option value="'+st.id+'">'+escape(st.id+' / '+st.name+' · '+st.region)+'</option>'}
 const panel=document.createElement('section');panel.id='stsTrafficPanel';panel.className='sts11-panel';
 panel.innerHTML=
- '<div class="sts11-heading"><span>TRAFFIC CONTROL / V14</span><span>REFERENCE / 2120</span></div>'+
+ '<div class="sts11-heading"><span>TRAFFIC CONTROL / V15</span><span>REFERENCE / 2120</span></div>'+
  '<div class="sts11-label">TRANSPORT MODE / 추진 방식</div>'+
  '<div class="sts11-modes" role="group" aria-label="추진 방식"><button data-mode="sail" aria-pressed="true">BEAM-SAIL <small>정거장 송전망</small></button><button data-mode="fusion" aria-pressed="false">FUSION <small>독립 항행 회랑</small></button></div>'+
  '<div class="sts11-label">VESSEL MODEL / 선박 형식</div><div class="sts11-ships" role="group" aria-label="선박 형식">'+
  ['freighter','clipper','fusion','tug'].map(id=>'<button type="button" data-vessel="'+id+'" aria-pressed="'+String(id==='freighter')+'"><strong>'+shipInfo[id].label+'</strong><small>'+shipInfo[id].kr+'</small></button>').join('')+'</div>'+
  '<div class="sts11-fusion" id="stsFusionCorridor" hidden><div class="sts11-label">FUSION CORRIDOR / 독립 운항 구간</div><div class="sts11-fusion-grid"><label>ORIGIN<select id="stsFusionFrom"></select></label><label>DESTINATION<select id="stsFusionTo"></select></label></div><p>기존 송전 간선망을 경유하지 않는 독립 항행 시나리오입니다.</p></div>'+
  '<div class="sts11-label">TRANSFER STRATEGY / 천이 방식</div><div class="sts11-strategies" role="group" aria-label="천이 방식">'+
- '<button data-orbit-profile="economy" aria-pressed="true">ECONOMY / 최소 에너지</button><button data-orbit-profile="express" aria-pressed="false">POWERED / 단축 운항</button></div>'+
+ '<button data-orbit-profile="regular" aria-pressed="true">REGULAR / 정기 운항</button><button data-orbit-profile="express" aria-pressed="false">EXPRESS / 급행</button><button data-orbit-profile="ballistic" aria-pressed="false">HOHMANN / 저에너지 참고</button></div>'+
  '<div class="sts11-label">SIMULATION TIME SCALE / 운항 시간 배율</div><div class="sts11-speed" role="group" aria-label="시간 배율">'+
  [1,5,20,100].map(n=>'<button type="button" data-timescale="'+n+'" aria-pressed="'+String(n===1)+'">'+n+'×</button>').join('')+
  '<button type="button" id="sts11Pause" aria-pressed="false">PAUSE</button></div>'+ 
  '<button type="button" class="sts11-follow" id="sts11Follow" aria-pressed="true">CHASE CAMERA / 선박 추적 ON</button>'+
- '<p class="sts11-footnote">1× = 실제 1초당 항행 시간 2시간. NASA의 태양 중심 천이 원리를 적용한 원궤도 근사 계산입니다. 행성 실제 위치·정밀 Lambert 해석·행성별 중력섭동은 포함하지 않습니다.</p>'+
+ '<p class="sts11-footnote">1× = 실제 1초당 시나리오 2시간. 2120년 고출력 전기추진선의 가속·관성비행·감속 예시 모델입니다. NASA 저에너지 호만 천이는 비교용이며 실제 천체력·정밀 중력섭동 해석은 아닙니다.</p>'+
  '<div class="sts11-telemetry" aria-live="off">'+
- '<div><small>HELIOCENTRIC SPEED / 태양 기준</small><strong id="sts11Speed">— km/s</strong></div>'+
+ '<div><small>TRANSFER SPEED / 경로 상대속도</small><strong id="sts11Speed">— km/s</strong></div>'+
  '<div><small>POWER / 수신·반응로</small><strong id="sts11Power">— GW</strong></div>'+
  '<div><small>ENERGY / 누적</small><strong id="sts11Energy">— TJ</strong></div>'+
  '<div><small>PHASE / 운항 단계</small><strong id="sts11Phase">STANDBY</strong></div>'+
  '<div><small>ETA / 예상 잔여</small><strong id="sts11Eta">—</strong></div>'+
  '<div><small>ELAPSED / 경과 시간</small><strong id="sts11Elapsed">—</strong></div>'+
- '<div><small>TRANSFER ΔV / 예정 속도변화</small><strong id="sts14Dv">—</strong></div>'+
- '<div><small>LAUNCH WINDOW / 출항 위상 대기</small><strong id="sts14Window">—</strong></div>'+
+ '<div><small>MISSION ΔV / 총 속도변화</small><strong id="sts14Dv">—</strong></div>'+
+ '<div><small>LAUNCH WINDOW / 호만 기준 위상</small><strong id="sts14Window">—</strong></div>'+
  '</div>'+
  '<div class="sts11-beam" id="sts11BeamPanel"><div><span>ACTIVE POWER FEED / 송전 연결</span><strong id="sts11BeamFrom">STANDBY</strong></div><div><span>RECEIVER / 수신 방식</span><strong id="sts11BeamMode">—</strong></div>'+
  '<label><input type="checkbox" id="sts11BeamVisible" checked>지도에 실시간 송전 빔 표시</label></div>'+
@@ -153,18 +153,21 @@ function setMode(mode){
  $('#journeyOptions').style.display=mode==='fusion'?'none':'';
  $('#journeySchedule').style.display=mode==='fusion'?'none':'';
  $('#journeyFind').disabled=mode==='fusion';
- panel.querySelectorAll('[data-orbit-profile]').forEach(btn=>btn.addEventListener('click',()=>{
- state.profile=btn.dataset.orbitProfile;
- panel.querySelectorAll('[data-orbit-profile]').forEach(x=>x.setAttribute('aria-pressed',String(x===btn)));
- ui('sts11Status').textContent=state.profile==='economy'?'HOHMANN REFERENCE / LOW ENERGY':'POWERED TRANSFER / HIGHER ENERGY';
-}));
-familySelect();
+ familySelect();
  ui('sts11BeamPanel').hidden=mode==='fusion';
  ui('sts11Status').textContent=mode==='fusion'?'INDEPENDENT FUSION ROUTING / NO POWER BEAM':'STS BEAM NETWORK / TRANSMITTER TRACKING';
  const a=window.STS_GET_ATLAS?.();
  if(a){a.stopJourney();a.shipFlipAngle=0;}
 }
 panel.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+panel.querySelectorAll('[data-orbit-profile]').forEach(btn=>btn.addEventListener('click',()=>{
+ state.profile=btn.dataset.orbitProfile;
+ panel.querySelectorAll('[data-orbit-profile]').forEach(x=>x.setAttribute('aria-pressed',String(x===btn)));
+ ui('sts11Status').textContent=state.profile==='ballistic'
+   ?'LOW ENERGY HOHMANN / COMPARISON ONLY'
+   :state.profile==='express'?'PRIORITY SERVICE / HIGHER POWER'
+   :'REGULAR SERVICE / POWERED CRUISE';
+}));
 panel.querySelectorAll('[data-vessel]').forEach(b=>b.addEventListener('click',()=>{
  state.vessel=b.dataset.vessel;familySelect();
  ui('sts11Status').textContent=shipInfo[state.vessel].label.toUpperCase()+' / MODEL LOADED FROM ENGINEERING VIEW';
@@ -246,31 +249,68 @@ function referenceTransfer(from,to){
  }
  return {...res,distanceKm};
 }
+// Solar-system commercial schedule, 2120. STS speculative propulsion:
+ // D = a*f*(1-f)*T^2 with two constant-thrust burns occupying f=0.25
+ // of the journey each and a coast in between. a = 2*eta*P/(mass*ve).
+ // Limits enforce peak transfer speed and installed peak engine power.
+ // This is a tractable thrust budget, not a solved n-body ephemeris.
+const COMMERCIAL_2120={
+ fusion:{maxGW:3.8,ve:190000,eff:.73,regularSpeed:65,expressSpeed:92,regularDays:82,expressDays:54},
+ tug:{maxGW:1.8,ve:190000,eff:.71,regularSpeed:59,expressSpeed:82,regularDays:88,expressDays:63},
+ freighter:{maxGW:1.55,ve:140000,eff:.70,regularSpeed:47,expressSpeed:62,regularDays:135,expressDays:110},
+ clipper:{maxGW:1.4,ve:160000,eff:.75,regularSpeed:73,expressSpeed:101,regularDays:82,expressDays:57}
+};
 function transferPlan(from,to,mode,vessel,profile=state.profile){
  const info=shipInfo[vessel]||shipInfo.fusion;
- const same=from.region===to.region,earthMoon=['Earth','Luna'].includes(from.region)&&['Earth','Luna'].includes(to.region);
+ const same=from.region===to.region,
+       earthMoon=['Earth','Luna'].includes(from.region)&&['Earth','Luna'].includes(to.region);
  if(same||earthMoon){
-  const scale={Earth:12000,Luna:7000,Mars:10000,Belt:145000,Jupiter:95000,Saturn:95000,Helio:100000};
-  const km=earthMoon&&!same?384400:Math.max(8000,length(sub(from.xyz,to.xyz))/U*(scale[from.region]||13000));
-  const v=mode==='fusion'?2.8:vessel==='clipper'?2.3:1.15;
-  const hours=Math.max(earthMoon&&!same?(mode==='fusion'?24:48):8,km/v/3600);
-  return {regional:true,distanceKm:km,durationSec:hours*3600,dvKmS:mode==='fusion'?3.2:1.5,
-   waitDays:0,powerGW:.2,orbitalSpeed:()=>v,kind:'LOCAL ORBITAL TRANSFER',factor:1};
+   const scale={Earth:12000,Luna:7000,Mars:10000,Belt:145000,Jupiter:95000,Saturn:95000,Helio:100000};
+   const km=earthMoon&&!same?384400:Math.max(8000,length(sub(from.xyz,to.xyz))/U*(scale[from.region]||13000));
+   const v=mode==='fusion'?2.8:vessel==='clipper'?2.3:1.15;
+   const hours=Math.max(earthMoon&&!same?(mode==='fusion'?24:48):8,km/v/3600);
+   return {regional:true,distanceKm:km,durationSec:hours*3600,dvKmS:mode==='fusion'?3.2:1.5,
+     waitDays:0,powerGW:.2,energyJ:0,propellantTonnes:0,peakKmS:v,thrustFraction:.25,
+     orbitalSpeed:()=>v,kind:'LOCAL ORBITAL TRANSFER',factor:1,profileType:'local'};
  }
  const ref=referenceTransfer(from,to);
- const factor=profile==='economy'?1:mode==='fusion'?.62:vessel==='clipper'?.58:.78;
- const durationSec=ref.hohmannSec*factor,dvKmS=ref.dvKmS*(1+(1-factor)*1.9);
- // Electrical jet energy estimate: E=0.5*m*v_exhaust*delta-v/efficiency.
- const ve=mode==='fusion'?800000:420000,eff=mode==='fusion'?.62:.66;
- const joules=.5*info.mass*1000*dvKmS*1000*ve/eff;
- const requiredGW=joules/(durationSec*.34)/1e9;
- return {...ref,regional:false,durationSec,dvKmS,
-  kind:profile==='economy'?'HOHMANN REFERENCE':'POWERED TRANSFER ENVELOPE',factor,
-  powerGW:clamp(requiredGW,.06,info.power||7.2),
-  orbitalSpeed(t){
-   const r=eccentricRadius(ref,t);
-   return Math.sqrt(MU_SUN*(2/r-1/ref.semi))/factor;
-  }};
+ if(profile==='ballistic'){
+   return {...ref,regional:false,durationSec:ref.hohmannSec,profileType:'ballistic',
+     kind:'HOHMANN LOW-ENERGY REFERENCE',powerGW:.035,energyJ:0,propellantTonnes:0,
+     thrustFraction:0,peakKmS:null,factor:1,
+     orbitalSpeed(t){
+       const r=eccentricRadius(ref,t);
+       return Math.sqrt(MU_SUN*(2/r-1/ref.semi));
+     }};
+ }
+ const perf=COMMERCIAL_2120[vessel]||COMMERCIAL_2120.fusion;
+ const express=profile==='express';
+ const peakLimit=express?perf.expressSpeed:perf.regularSpeed;
+ const dayFloor=express?perf.expressDays:perf.regularDays;
+ const f=.25,coastFactor=1-f;
+ const massKg=info.mass*1000,peakW=perf.maxGW*1e9;
+ // Mean planet-orbit radial separation plus an explicit 10% rendezvous
+ // geometry allowance. NOT the exaggerated 3D map's arbitrary spline length.
+ const directKm=Math.abs(ref.r2-ref.r1)*1.10+0.012*AU_KM;
+ const distanceKm=Math.max(0.035*AU_KM,directKm),distanceM=distanceKm*1000;
+ const speedFloor=distanceKm/(peakLimit*coastFactor);
+ const powerFloor=Math.sqrt(distanceM*massKg*perf.ve/
+   (2*perf.eff*peakW*f*coastFactor));
+ const durationSec=Math.max(dayFloor*DAY,speedFloor,powerFloor);
+ const peakKmS=distanceKm/(coastFactor*durationSec);
+ const dvKmS=2*peakKmS;
+ const energyJ=.5*massKg*perf.ve*(dvKmS*1000)/perf.eff;
+ const powerGW=energyJ/(2*f*durationSec)/1e9;
+ const propellantTonnes=info.mass*(1-Math.exp(-(dvKmS*1000)/perf.ve));
+ if(powerGW>perf.maxGW*1.0001||peakKmS>peakLimit*1.0001)
+   throw Error('Commercial transfer exceeds installed engine limits');
+ return {...ref,regional:false,profileType:profile,kind:express?'POWERED EXPRESS':'POWERED REGULAR',
+   distanceKm,durationSec,dvKmS,peakKmS,energyJ,powerGW,propellantTonnes,
+   thrustFraction:f,reactorMaxGW:perf.maxGW,
+   orbitalSpeed(t){return peakKmS*profileVelocity(t)/(1/.75);},
+   // Astronomical launch timing still uses circular reference; rapid transfer
+   // windows are much broader and not accurately solved by Hohmann phasing.
+   waitDays:null,factor:durationSec/ref.hohmannSec};
 }
 function pathFromPoints(from,to,mode){
  const route=mode==='sail'?routes.find(r=>
@@ -382,17 +422,26 @@ Atlas.prototype.updateJourney=function(dt){
  }
  const phase=phaseAt(local);state.phase=phase;
  this.shipFlipAngle=local<=.68?0:local<.75?(local-.68)/.07*Math.PI:Math.PI;
- // Vis-viva model in the heliocentric frame, not an arbitrary screen pixel speed.
- j.currentSpeed=leg.orbitalSpeed(local);
- const thrusting=(phase==='ACCELERATION'||phase==='DECELERATION');
+ // Relative transit speed: exactly the derivative of the 25/50/25
+ // acceleration / coast / deceleration travel profile.
+ j.currentSpeed=leg.profileType==='ballistic'
+   ?leg.orbitalSpeed(local):leg.peakKmS*profileVelocity(local)/ (1/.75);
+ const thrusting=leg.profileType!=='ballistic'&&(phase==='ACCELERATION'||phase==='DECELERATION');
  if(j.preset.mode==='sail'){
   const beam=thrusting?transmitter(this.shipPos,leg,j.elapsedSec,this):{source:null,type:'OFFLINE',power:0};
-  j.activeBeam=beam;state.sender=beam.source;state.beamGW=beam.power;
-  state.beamMode=thrusting?beam.type:'COAST / NO BEAM';
+  j.activeBeam=beam;state.sender=beam.source;
+  // Actual live-feed power is shown separately from demanded propulsion power.
+  // If the feed is insufficient, show the deficit rather than inventing energy.
+  state.beamGW=beam.power;
+  state.beamMode=thrusting?
+    (beam.power+1e-3<leg.powerGW?beam.type+' / UNDERSUPPLIED':beam.type):
+    'COAST / NO BEAM';
  }else{
-  state.sender=null;state.beamGW=thrusting?leg.powerGW:.035;
-  state.beamMode=thrusting?'FUSION ELECTRIC THRUST':'REACTOR IDLE / COAST';
+  state.sender=null;state.beamGW=thrusting?(leg.powerGW+.035):.035;
+  state.beamMode=thrusting?'FUSION POWERED BURN':'REACTOR IDLE / COAST';
  }
+ // GW * s = GJ; conversion to TJ is /1000. Keep power sampling
+ // conservative across speed-multiplied simulation time-steps.
  j.energyTJ+=state.beamGW*step/1000;
  state.energyTJ=j.energyTJ;
  state.activeHours=j.elapsedSec/3600;
@@ -416,11 +465,15 @@ function renderTelemetry(atlas,j,leg,t){
  ui('sts11Eta').textContent=duration(secondsLeft);
  ui('sts11Elapsed').textContent=duration(j.elapsedSec);
  ui('sts14Dv').textContent=format(leg.dvKmS,2)+' km/s'+
-   (leg.regional?' · LOCAL':' · INJECTION + CAPTURE');
- ui('sts14Window').textContent=leg.regional?'LOCAL / NO WINDOW':'~'+format(leg.waitDays,0)+' d / PHASE ESTIMATE';
+   (leg.regional?' · LOCAL':leg.profileType==='ballistic'?' · BALLISTIC':' · POWERED');
+ ui('sts14Window').textContent=leg.regional?'LOCAL / NO WINDOW':
+   leg.profileType==='ballistic'?'~'+format(leg.waitDays,0)+' d / HOHMANN PHASE':
+   'WIDE WINDOW / PHASE NOT SOLVED';
  ui('sts11BeamFrom').textContent=state.sender?state.sender.id+' / '+state.sender.name:'NO POWER FEED / COAST';
  ui('sts11BeamMode').textContent=state.beamMode+(state.sender?' · '+format(state.beamGW,2)+' GW':'');
- ui('sts11Status').textContent=shipInfo[j.preset.vessel].label.toUpperCase()+' / '+modeLabel(j.preset.mode)+' / '+format(100*j.elapsedSec/j.totalSec,1)+'%';
+ ui('sts11Status').textContent=shipInfo[j.preset.vessel].label.toUpperCase()+
+   ' / '+leg.kind+' / '+format(100*j.elapsedSec/j.totalSec,1)+'%'+
+   (leg.profileType==='ballistic'?'': ' / TARGET '+format(leg.powerGW,2)+' GW');
  ui('journeyProgress').style.width=format(100*j.elapsedSec/j.totalSec,1)+'%';
 }
 function updateGpuLine(atlas,key,points){
