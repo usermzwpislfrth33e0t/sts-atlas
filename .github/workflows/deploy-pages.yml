@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,17 +25,31 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - name: Attach shipyard V5 design module
+      - name: Attach Shipyard V5 to the original HTML
         run: |
           python3 - <<'PY'
           from pathlib import Path
           index = Path('index.html')
           source = index.read_text(encoding='utf-8')
+          css = '<link rel="stylesheet" href="./shipyard-v5.css?v=5.2">'
+          script = '<script src="./shipyard-v5.js?v=5.2"></script>'
           if 'shipyard-v5.js' not in source:
-              source = source.replace('</head>', '<link rel="stylesheet" href="./shipyard-v5.css?v=5.1"></head>', 1)
-              source = source.replace('</body></html>', '<script src="./shipyard-v5.js?v=5.1"></script></body></html>', 1)
+              if '</head>' not in source or '</body></html>' not in source:
+                  raise SystemExit('Cannot safely locate HTML insertion points')
+              source = source.replace('</head>', css + '\n</head>', 1)
+              source = source.replace('</body></html>', script + '\n</body></html>', 1)
               index.write_text(source, encoding='utf-8')
+          assert 'shipyard-v5.js' in source and 'shipyard-v5.css' in source
           PY
+      - name: Make V5 part of the source (avoid competing Pages deployments)
+        run: |
+          if ! git diff --quiet -- index.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "Include Shipyard V5 assets in published index.html"
+            git push origin HEAD:main
+          fi
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
         with:
