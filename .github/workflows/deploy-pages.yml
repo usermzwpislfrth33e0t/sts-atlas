@@ -50,6 +50,8 @@ jobs:
             git commit -m "Include Shipyard V5 assets in published index.html"
             git push origin HEAD:main
           fi
+      - name: Validate shipyard renderer syntax
+        run: node --check shipyard-v5.js
       - name: Upload static site
         uses: actions/upload-pages-artifact@v4
         with:
