@@ -1,7 +1,7 @@
 name: Production reachability test
 on:
   push:
-    paths: [.github/workflows/check-live.yml, stationyard.bundle.js, shipyard-v7.bundle.js]
+    paths: [.github/workflows/check-live.yml]
   workflow_dispatch:
 permissions:
   contents: read
@@ -10,38 +10,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch publicly deployed site (do not trust deployment status)
+      - name: Fetch STS public resources
         run: |
-          set +e
-          for url in 'https://usermzwpislfrth33e0t.github.io/sts-atlas/' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/stationyard.bundle.js?v=1.3' 'https://usermzwpislfrth33e0t.github.io/sts-atlas/shipyard-v7.bundle.js?v=7.3'; do
-            echo "LIVE URL: $url"
-            curl -vIL --connect-timeout 15 --max-time 35 --retry 2 --retry-delay 3 "$url" 2>&1 | tail -n 35
-            echo "BODY STATUS:"
-            curl -LsS --connect-timeout 15 --max-time 45 -o /tmp/response -w 'status=%{http_code} size=%{size_download} redirected=%{url_effective} content_type=%{content_type}\n' "$url"
-            head -c 80 /tmp/response | tr '\n' ' ' || true
-            echo
+          set -e
+          for resource in \
+            'index.html' \
+            'shipyard-v5.js?v=8.1' \
+            'shipyard-v7.bundle.js?v=8.1' \
+            'stationyard.bundle.js?v=1.5' \
+            'sts-reference-v2.js?v=2.1' \
+            'sts-reference-v2.css?v=2.1'; do
+            url="https://usermzwpislfrth33e0t.github.io/sts-atlas/$resource"
+            echo "URL $url"
+            for i in 1 2 3; do
+              code=$(curl -Lsf --connect-timeout 15 --max-time 35 -o /tmp/sts-live-file -w '%{http_code}' "$url") && break || code="ERR"
+              sleep 2
+            done
+            echo "HTTP $code BYTES $(wc -c </tmp/sts-live-file)"
+            test "$code" = 200
           done
-      - name: Validate public homepage with actual remote browser
+      - name: Render public site in Chromium
         run: |
           npm install --no-save --ignore-scripts playwright-core@1.57.0
           node <<'JS'
-          const {chromium}=require('playwright-core');
-          const {execSync}=require('child_process');
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
           (async()=>{
-          const binary=execSync('which google-chrome || which chromium').toString().trim();
-          const browser=await chromium.launch({headless:true,executablePath:binary,args:['--no-sandbox','--disable-gpu-sandbox']});
-          const page=await browser.newPage({viewport:{width:900,height:740},deviceScaleFactor:1});
-          page.on('pageerror',e=>console.log('JSERROR',e.message));
-          page.on('requestfailed',req=>console.log('NETWORK_FAILURE',req.url(),req.failure()?.errorText));
-          page.on('response',res=>{if(res.status()>=400)console.log('HTTP_ERROR',res.status(),res.url())});
-          try{
-          const res=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/',{waitUntil:'domcontentloaded',timeout:50000});
-          console.log('LIVE_BROWSER',JSON.stringify({status:res?.status(),url:page.url(),title:await page.title(),bodyLen:(await page.locator('body').innerText()).length,portalVisible:await page.locator('#portal').isVisible(),stationsReady:await page.evaluate(()=>window.STS_STATIONYARD_READY===true)}));
-          await page.waitForTimeout(2000);
-          console.log('LIVE_STATION_READY',await page.evaluate(()=>window.STS_STATIONYARD_READY===true));
-          try{await page.evaluate(()=>document.querySelector('#portal')?.remove());await page.addStyleTag({content:'#app{display:block!important;opacity:1!important;visibility:visible!important}#facilitiesView{display:block!important;opacity:1!important;visibility:visible!important}'});await page.evaluate(()=>document.querySelector('#facilitiesView')?.classList.add('active'));await page.waitForFunction(()=>window.STS_STATIONYARD_READY===true,{timeout:12000});console.log('LIVE_STATION_RENDER',{options:await page.locator('#stationyardSelect option').count(),canvases:await page.locator('#stationyardCanvas').count()});}catch(e){console.log('LIVE_STATION_RENDER_FAIL',String(e))}
-          console.log('LIVE_AFTER_4S',JSON.stringify({url:page.url(),view:await page.locator('.view.active').count(),body:await page.locator('body').innerText().then(s=>s.slice(0,250))}));
-          }catch(e){console.log('LIVE_BROWSER_FAILURE',String(e))}
-          await browser.close();
-          })().catch(e=>{console.error(e);process.exitCode=1});
+            const browser=await chromium.launch({executablePath:execSync('which google-chrome || which chromium').toString().trim(),headless:true,args:['--no-sandbox','--disable-gpu-sandbox']});
+            const page=await browser.newPage({viewport:{width:1050,height:870},deviceScaleFactor:1});
+            const issues=[];page.on('pageerror',e=>issues.push('JS '+(e.stack||e.message)));
+            page.on('response',r=>{if(r.status()>=400)issues.push('HTTP '+r.status()+' '+r.url())});
+            const response=await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/?v=engineering-8.1',{waitUntil:'domcontentloaded',timeout:50000});
+            await page.waitForFunction(()=>window.STS_SHIPYARD_V7_READY===true&&window.STS_STATIONYARD_READY===true&&window.STS_CANONICAL_REFERENCE_READY===true,{timeout:35000});
+            await page.addStyleTag({content:'#portal,#boot{display:none!important}#app{display:block!important;opacity:1!important;visibility:visible!important}#vesselsView,#facilitiesView,#aboutView{display:block!important;opacity:1!important;visibility:visible!important}'});
+            const observed=await page.evaluate(()=>({
+              title:document.title,
+              portal:document.querySelector('.portal-title')?.textContent,
+              about:document.querySelector('#stsCanonicalReference')?.innerText.slice(0,120),
+              fleetRows:document.querySelectorAll('#stsFleetRows tr').length,
+              dockText:document.querySelector('#shipDossier')?.innerText.slice(0,90),
+              stationOptions:document.querySelectorAll('#stationyardSelect option').length,
+              stationCanvas:!!document.querySelector('#stationyardCanvas'),
+              shipCanvas:!!document.querySelector('#shipCanvas'),
+              assets:[...document.scripts].map(s=>s.src).filter(s=>s.includes('sts-atlas'))
+            }));
+            console.log('LIVE_SITE',JSON.stringify({status:response.status(),...observed}));
+            if(response.status()!==200||observed.fleetRows!==23||observed.stationOptions!==79||!observed.about||!observed.dockText)
+              throw Error('Missing published STS document or 3D viewer');
+            await page.locator('.shipyard-model[data-model="fusion"]').click();
+            console.log('LIVE_FUSION',JSON.stringify(await page.evaluate(()=>({name:document.querySelector('#shipName').textContent,description:document.querySelector('#shipDescription').textContent.slice(0,120)}))));
+            console.log('LIVE_ERRORS',JSON.stringify(issues));
+            await browser.close();
+            if(issues.length)process.exitCode=1;
+          })().catch(e=>{console.error('LIVE_TEST_FAILED',e);process.exitCode=1});
           JS
