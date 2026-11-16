@@ -23,5 +23,8 @@ jobs:
             for p in found[:5]:
               print('EXCERPT',repr(needle),p,repr(s[max(0,p-280):p+1050]))
           print('FIRST_HTML',repr(s[:1700]))
-          print('LAST_HTML',repr(s[-4500:]))
+          print('LAST_HTML',repr(s[-1800:]))
+          for needle in ['function startEntry','function finishEntry','function go(next','let entered','const $=','const D=','const q=','\.portal\{','\.boot-sequence\{','\.portal-center\{','\.portal-left\{','\.portal-right\{','\.portal-top\{','\.app\{']:
+            p=s.find(needle.replace('\\',''))
+            print('FOCUSED',repr(needle),'POS',p,'EXCERPT',repr(s[max(0,p-650):p+(3200 if 'startEntry' in needle or 'finishEntry' in needle else 1450)]) if p>=0 else '')
           PY
