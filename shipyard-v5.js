@@ -178,5 +178,5 @@ if(Atlas3D){
     c.restore();
   };
 }
-import('./shipyard-v7.js?v=11.0').catch(err=>console.error('STS Shipyard WebGL load failed:',err));
+import('./shipyard-v7.js?v=12.0').catch(err=>console.error('STS Shipyard WebGL load failed:',err));
 })();
