@@ -1,0 +1,70 @@
+name: Verify STS 2120 reference and atlas models
+on:
+  push:
+    paths: [.github/workflows/test-reference-v2.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check sources and compiled browser modules
+        run: |
+          node --check sts-reference-v2.js
+          node --check shipyard-v7.js
+          node --check shipyard-v7.bundle.js
+          node --check stationyard.bundle.js
+          grep -q 'sts-reference-v2.js' index.html
+          grep -q 'shipyard-v5.js?v=8.1' index.html
+          grep -q 'stationyard.bundle.js?v=1.5' index.html
+      - name: Start page and test browser
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 > /tmp/sts-test.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({executablePath:execSync('which google-chrome || which chromium').toString().trim(),headless:true,args:['--no-sandbox','--disable-gpu-sandbox']});
+            const page=await browser.newPage({viewport:{width:1100,height:960},deviceScaleFactor:1});
+            const errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
+            page.on('response',r=>{if(r.status()>=400)errors.push('HTTP '+r.status()+' '+r.url())});
+            await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:45000});
+            await page.addStyleTag({content:'#portal,#boot{display:none!important}#app{display:block!important;opacity:1!important;visibility:visible!important}#vesselsView{display:block!important;opacity:1!important;visibility:visible!important;position:static!important}'});
+            await page.evaluate(()=>document.querySelector('#vesselsView')?.classList.add('active'));
+            await page.waitForFunction(()=>window.STS_SHIPYARD_V7_READY===true&&window.STS_CANONICAL_REFERENCE_READY===true,{timeout:30000});
+            console.log('FLEET',JSON.stringify(await page.evaluate(()=>({rows:document.querySelectorAll('#stsFleetRows tr').length,reference:!!document.getElementById('stsCanonicalReference'),portal:document.querySelector('.portal-title')?.textContent,engine:document.querySelector('#shipName')?.textContent,dossier:document.querySelector('#shipDossier')?.innerText.slice(0,400)}))));
+            for(const model of ['freighter','clipper','fusion','tug']){
+              await page.locator('.shipyard-model[data-model="'+model+'"]').click();
+              await page.waitForTimeout(300);
+              const result=await page.evaluate(()=>({name:document.querySelector('#shipName')?.textContent,desc:document.querySelector('#shipDescription')?.textContent,length:document.querySelector('#shipDescription')?.textContent?.length,parts:document.querySelectorAll('.shipyard-part').length}));
+              console.log('SHIP',model,JSON.stringify(result));
+              if(result.length<120)throw Error('Vessel description too short: '+model);
+            }
+            const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+            mobile.on('pageerror',e=>errors.push('mobile '+(e.stack||e.message)));
+            await mobile.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:40000});
+            await mobile.addStyleTag({content:'#portal,#boot{display:none!important}#app{display:block!important;opacity:1!important;visibility:visible!important;position:static!important}#atlasView{display:block!important;opacity:1!important;visibility:visible!important;position:static!important}'});
+            await mobile.evaluate(()=>{
+              document.querySelector('#atlasView')?.classList.add('active');
+              const wrapper=document.createElement('div');wrapper.id='map-test';wrapper.style.cssText='width:390px;height:540px;position:fixed;z-index:99999;left:0;top:0;background:#071019';
+              wrapper.innerHTML='<canvas id="map-test-main" style="width:100%;height:100%;position:absolute;inset:0"></canvas><canvas id="map-test-overlay" style="width:100%;height:100%;position:absolute;inset:0;pointer-events:none"></canvas>';
+              document.body.appendChild(wrapper);
+            });
+            await mobile.waitForFunction(()=>window.STS_STATIONYARD_READY===true,{timeout:30000});
+            await mobile.evaluate(()=>{
+              const atlas=new STS3D.Atlas3D(document.getElementById('map-test-main'),document.getElementById('map-test-overlay'),{});
+              const earth=STS3D.LOOK.EARTH;atlas.region='Earth';atlas.selected=STS3D.STATION_BY_ID.E01;
+              atlas.camera.target=earth.xyz.slice();atlas.camera.destTarget=earth.xyz.slice();atlas.camera.dist=18;atlas.camera.destDist=18;
+              atlas.camera.az=-.65;atlas.camera.destAz=-.65;atlas.camera.el=.75;atlas.camera.destEl=.75;
+              window.__mapTest=atlas;
+            });
+            await mobile.waitForTimeout(1200);
+            console.log('MAP_CAMERA',JSON.stringify(await mobile.evaluate(()=>({station:window.__mapTest.selected.name,zoom:window.__mapTest.camera.dist,
+             sunVisible:window.__mapTest.bodyVisible(STS3D.LOOK.SOL),earthVisible:window.__mapTest.bodyVisible(STS3D.LOOK.EARTH),errors:[]}))));
+            const shot=await mobile.locator('#map-test').screenshot({type:'jpeg',quality:55});const b64=shot.toString('base64');
+            console.log('MAP_SHOT_START:'+b64.length);for(let i=0;i<b64.length;i+=6000)console.log('MAP_SHOT:'+i+':'+b64.slice(i,i+6000));console.log('MAP_SHOT_END');
+            console.log('JS_ERRORS',JSON.stringify(errors));await browser.close();if(errors.length)process.exitCode=1;
+          })().catch(err=>{console.error('TEST_FAIL',err);process.exitCode=1});
+          JS
