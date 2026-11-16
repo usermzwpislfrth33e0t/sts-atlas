@@ -1,0 +1,54 @@
+name: Fast V10 Mobile Entry Smoke
+on:
+  push:
+    paths: [.github/workflows/smoke-v10.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release weight and syntax
+        run: |
+          node --check sts-terminal-v9.js
+          test -s assets/sts-ambient.mp3
+          test "$(stat -c %s index.html)" -lt 200000
+          echo "HTML_BYTES=$(stat -c %s index.html)"
+      - name: Mobile Chromium full entry smoke
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 >/tmp/sts-smoke-http.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const bin=execSync('which google-chrome || which chromium').toString().trim();
+            const browser=await chromium.launch({headless:true,executablePath:bin,args:['--no-sandbox','--disable-gpu-sandbox']});
+            const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+            const audio=[],errors=[];
+            page.on('request',r=>{if(r.url().includes('sts-ambient.mp3'))audio.push(r.url())});
+            page.on('pageerror',e=>errors.push(e.stack||e.message));
+            let t=Date.now();
+            const response=await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:25000});
+            await page.waitForFunction(()=>window.STS_TERMINAL_V9_READY===true,{timeout:12000});
+            console.log('READY_MILLISECONDS',Date.now()-t,'STATUS',response.status());
+            const recorded=await page.evaluate(()=>{
+              const el=document.getElementById('sts9BootTitle');
+              window.__stages=[el.textContent];
+              new MutationObserver(()=>window.__stages.push(el.textContent)).observe(el,{childList:true,subtree:true});
+              return [document.getElementById('bgm').getAttribute('src'),document.getElementById('boot').getAttribute('class')];
+            });
+            console.log('INITIAL',JSON.stringify(recorded));
+            await page.locator('[data-sts9-destination="atlas"]').tap();
+            await page.waitForTimeout(700);
+            const mid=await page.evaluate(()=>({boot:document.querySelector('#sts9BootOverlay').classList.contains('sts9-boot-open'),originalBoot:getComputedStyle(document.querySelector('#boot')).display,appReady:document.querySelector('#app').classList.contains('ready')}));
+            console.log('MID',JSON.stringify(mid));
+            if(!mid.boot||mid.originalBoot!=='none'||mid.appReady)throw Error('Boot skipped before finishing');
+            await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:7500});
+            const result=await page.evaluate(()=>({stages:[...new Set(window.__stages)],active:document.querySelector('.view.active')?.id,bootAria:document.querySelector('#sts9BootOverlay').getAttribute('aria-hidden')}));
+            console.log('FINAL',JSON.stringify(result),'AUDIO_INITIAL_REQUESTS',audio.length,'JS_ERRORS',JSON.stringify(errors));
+            if(result.stages.length<6||result.active!=='atlasView'||result.bootAria!=='true'||audio.length||errors.length)throw Error('Entry regression');
+            await browser.close();
+          })().catch(e=>{console.error('SMOKE_FAILED',e);process.exit(1)});
+          JS
