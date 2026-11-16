@@ -1,0 +1,75 @@
+name: Visual test STS Terminal V9
+on:
+  push:
+    paths: [.github/workflows/test-terminal-v9.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint STS terminal
+        run: |
+          node --check sts-terminal-v9.js
+          grep -q 'sts-terminal-v9.js' index.html
+          grep -q 'sts-terminal-v9.css' index.html
+      - name: Install browser test harness
+        run: npm install --no-save --ignore-scripts playwright-core@1.57.0
+      - name: Render entrance and complete original navigation transition
+        run: |
+          python3 -m http.server 8765 >/tmp/sts-http.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const bin=execSync('which google-chrome || which chromium').toString().trim();
+            const browser=await chromium.launch({headless:true,executablePath:bin,args:['--no-sandbox','--disable-gpu-sandbox']});
+            const errors=[];
+            const capture=async(page,id,selector)=>{
+              const img=await page.locator(selector).screenshot({type:'jpeg',quality:61,animations:'disabled'});
+              const b64=img.toString('base64');console.log('SHOT_START:'+id+':'+b64.length);
+              for(let i=0;i<b64.length;i+=6000)console.log('SHOT_CHUNK:'+id+':'+i+':'+b64.slice(i,i+6000));
+              console.log('SHOT_END:'+id);
+            };
+            const test=async(width,height,isMobile)=>{
+              const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1,isMobile,hasTouch:isMobile});
+              page.on('pageerror',e=>errors.push(e.stack||e.message));
+              page.on('response',r=>{if(r.status()>=400)errors.push('HTTP '+r.status()+' '+r.url())});
+              await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded',timeout:50000});
+              await page.waitForFunction(()=>window.STS_TERMINAL_V9_READY===true,{timeout:20000});
+              await page.waitForTimeout(280);
+              console.log('PORTAL_'+width,JSON.stringify(await page.evaluate(()=>{
+                const p=document.querySelector('#portal'),c=document.querySelector('#sts9PortalMap'),b=p.getBoundingClientRect();
+                return {metrics:[...p.querySelectorAll('.sts9-metric strong')].map(x=>x.textContent),
+                  buttons:[...p.querySelectorAll('[data-sts9-destination]')].map(x=>x.dataset.sts9Destination),
+                  width:b.width,bodyScrollWidth:document.documentElement.scrollWidth,
+                  canvas:[c.width,c.height],nativeBtn:!!document.querySelector('#enterBtn')};
+              })));
+              if(await page.locator('.sts9-action').count()!==3)throw Error('missing portal commands');
+              await capture(page,(isMobile?'mobile':'desktop')+'-portal','#portal');
+              await page.locator('.sts9-action[data-sts9-destination="atlas"]').click();
+              await page.waitForFunction(()=>document.querySelector('#sts9BootOverlay').classList.contains('sts9-boot-open'));
+              await page.waitForTimeout(650);
+              console.log('BOOT_STAGE_'+width,JSON.stringify(await page.evaluate(()=>({stage:document.querySelector('#sts9BootTitle').textContent,progress:document.querySelector('#sts9BootPct').textContent,rows:document.querySelectorAll('.sts9-boot-task').length}))));
+              await capture(page,(isMobile?'mobile':'desktop')+'-boot','#sts9BootOverlay');
+              await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:13000});
+              await page.waitForTimeout(500);
+              const result=await page.evaluate(()=>({
+                bootHidden:document.querySelector('#sts9BootOverlay').getAttribute('aria-hidden'),
+                active:document.querySelector('.view.active')?.id,
+                destination:window.STS_TERMINAL_V9_STATE.destination,
+                appVisible:document.querySelector('#app').classList.contains('ready'),
+                nativeBootVisible:document.querySelector('#boot').classList.contains('visible')
+              }));
+              console.log('DESTINATION_'+width,JSON.stringify(result));
+              if(result.active!=='atlasView'||!result.appVisible||result.bootHidden!=='true')throw Error('Navigation not working');
+              await page.close();
+            };
+            await test(1300,870,false);
+            await test(390,844,true);
+            console.log('JS_ERRORS',JSON.stringify(errors));
+            await browser.close();
+            if(errors.length)process.exitCode=1;
+          })().catch(e=>{console.error('TEST_FAIL',e);process.exitCode=1});
+          JS
