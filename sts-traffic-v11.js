@@ -138,7 +138,7 @@ selTo.innerHTML=fusionOptions.map(option).join('');
 selFrom.value=V.STATION_BY_ID.E03?'E03':fusionOptions[0]?.id;
 selTo.value=V.STATION_BY_ID.M01?'M01':fusionOptions[fusionOptions.length-1]?.id;
 const ui=id=>document.getElementById(id);
-const familySelect=()=>{panel.querySelectorAll('[data-vessel]').forEach(btn=>{btn.hidden=state.mode==='fusion'?!['fusion','tug'].includes(btn.dataset.vessel):!['freighter','clipper'].includes(btn.dataset.vessel);btn.setAttribute('aria-pressed',String(state.vessel===btn.dataset.vessel))})};
+const familySelect=()=>{panel.querySelectorAll('[data-vessel]').forEach(btn=>{btn.hidden=state.mode==='fusion'?btn.dataset.vessel!=='fusion':!['freighter','clipper'].includes(btn.dataset.vessel);btn.setAttribute('aria-pressed',String(state.vessel===btn.dataset.vessel))})};
 function setMode(mode){
  state.mode=mode;state.vessel=mode==='fusion'?'fusion':'freighter';state.paused=false;
  panel.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
