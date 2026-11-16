@@ -140,9 +140,16 @@ function buildFreighter(){
  tapered(bus,[0,0,7.55],[0,0,8.4],.60,.08,'steel',16);
  ring(bus,.88,.06,6.37,'bronze',36);
  box(bus,[0,.66,6.97],[.86,.12,.55],'glass');
- for(const x of [-1,1]){tapered(drive,[x*.98,-.26,6.1],[x*.98,-.26,7.3],.32,.41,'hull',12);
-  ring(drive,.42,.075,7.29,'bronze',24);ring(drive,.28,.055,7.34,'glow',24)}
- return {membrane:[-3.15,2.7,-4.65],booms:[3.4,2.5,-4.1],bus:[0,.65,7.35],payload:[.7,.75,2.8],thrusters:[1,-.3,7.36]};
+ // Engineering axis: +Z bow, -Z stern/exhaust. The former nozzle rings
+ // floated at the axis instead of following the two off-axis engines.
+ for(const sign of [-1,1]){
+  const x=sign*1.10,y=-.39;
+  tapered(drive,[x,y,6.20],[x,y,5.05],.30,.41,'hull',14);
+  const rim=ring(drive,.42,.075,5.02,'bronze',24),glow=ring(drive,.28,.055,4.97,'glow',24);
+  for(const part of [rim,glow]){part.position.x=x;part.position.y=y}
+  rod(drive,[sign*.70,-.16,6.25],[x,y,5.75],.066,'steel',9);
+ }
+ return {membrane:[-3.15,2.7,-4.65],booms:[3.4,2.5,-4.1],bus:[0,.65,7.35],payload:[.7,.75,2.8],thrusters:[1.1,-.39,5.02]};
 }
 function buildClipper(){
  const sail=setPart('membrane'),booms=setPart('booms'),bus=setPart('bus'),payload=setPart('payload'),drive=setPart('thrusters');
@@ -157,7 +164,7 @@ function buildClipper(){
  for(const s of [-1,1]){pod(payload,s*1.05,-.43,1.6,3.6,.38,'metal');
   for(const z of [1.1,2.8])rod(payload,[s*.5,-.1,z],[s*1.05,-.43,z],.055,'steel',8);
   tapered(drive,[s*.43,-.23,-4],[s*.43,-.23,-4.9],.29,.38,'hull',12);
-  ring(drive,.39,.07,-4.91,'glow',24).position.x=s*.43}
+  const nozzle=ring(drive,.39,.07,-4.91,'glow',24);nozzle.position.x=s*.43;nozzle.position.y=-.23}
  return {membrane:[-3.2,1.4,-2.7],booms:[3.3,.85,-2.3],bus:[0,.7,5.05],payload:[-1.05,-.43,1.6],thrusters:[.43,-.2,-4.9]};
 }
 function buildFusion(){
