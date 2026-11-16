@@ -54,3 +54,13 @@
 
 #stsTrafficPanel .sts11-follow{width:100%;min-height:37px;margin-top:7px;text-align:left;padding:8px 12px;font-size:10px;letter-spacing:.6px;background:#122636}
 #stsTrafficPanel .sts11-follow[aria-pressed="true"]{color:#b9e8fa;border-color:#83bfdf}
+
+/* V14 / orbit strategy and 8-field gravity-aware telemetry */
+#stsTrafficPanel .sts11-strategies{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#stsTrafficPanel .sts11-strategies button{font-size:10px;min-height:44px;padding:9px 7px;line-height:1.4;white-space:normal}
+#stsTrafficPanel .sts11-telemetry{grid-template-columns:repeat(2,minmax(0,1fr))}
+#stsTrafficPanel .sts11-telemetry>div:nth-child(3n){border-right:1px solid #30475a}
+#stsTrafficPanel .sts11-telemetry>div:nth-child(2n){border-right:0}
+#stsTrafficPanel .sts11-telemetry>div:nth-last-child(3){border-bottom:1px solid #30475a}
+#stsTrafficPanel .sts11-telemetry>div:nth-last-child(-n+2){border-bottom:0}
+#stsTrafficPanel .sts11-footnote a{color:#9ed1ed;text-underline-offset:3px}
