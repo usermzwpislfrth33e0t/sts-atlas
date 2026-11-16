@@ -19,8 +19,8 @@ const types=[
   [['frame','광학 정렬 프레임','세일선 출항 방향과 송신부의 기준 축을 맞춥니다.'],['emitters','출력 배열','다수의 독립 발광·빔 형성 장치로 구성됩니다.'],['optics','광학 주축','빔 정렬과 진동 제어를 담당하는 광학 지지 구조입니다.'],['power','전력·방열부','전원 분배, 축전 및 방열 구조입니다.']]],
  ['SAFETY','안전·구난 감시소','Traffic safety outpost','추적 센서, 구조선 대기대, 관제와 경보',
   [['sensors','광역 관측 프레임','파편과 위험 접근체를 추적하기 위한 센서입니다.'],['control','관제실','안전 명령과 구조선 출동을 조정합니다.'],['rescue','구난·구조 접안부','긴급 진입 장비와 구조선 접안부입니다.'],['arms','점검 작업장치','외부 선체를 검사하고 회수하는 작업 암입니다.']]],
- ['CATCHER','화물 포획 시설','Cargo capture installation','감속·포획 프레임, 화물 이송, 완충 구조',
-  [['frame','포획 프레임','고속 접근체의 진입 축을 한정하는 개방형 프레임입니다.'],['capture','완충·유도 구역','화물 컨테이너의 상대속도 처리와 포획을 보조합니다.'],['cargo','화물 인계부','포획한 화물을 예인선과 선별 라인으로 인계합니다.'],['control','안전 관제부','포획창 검증, 정밀 계측과 긴급 중단 장비입니다.']]],
+ ['CATCHER','궤도 캐처','Rotating tether catcher','중심 허브, 회전 테더, 양단 포획 클로와 화물 인계 시설',
+  [['frame','회전 테더·중심 허브','회전하는 2기 또는 4기의 테더가 궤도 운동량을 교환합니다. 모형은 4방향 배치를 보여주며 실제 길이(15–180 km)는 축척으로 그리지 않았습니다.'],['capture','테더 끝단 포획 클로','테더 끝단의 포획 구조가 접근체의 상대속도를 맞춰 결합합니다. 중단 조건에서는 비상 분리가 가능해야 합니다.'],['cargo','궤도 화물 인계부','포획 후 작업선이 화물을 분리·정렬해 항만 및 다음 운송수단으로 인계합니다.'],['control','궤도·안전 제어부','궤도 보정 추진기, 교통 센서, 진입창 검증과 충돌 회피 제어를 담당합니다.']]],
  ['POWER','발전·송전 시설','Power generation and transmission','발전 모듈, 열관리, 전력 송전 개구',
   [['reactor','발전 모듈','발전 및 에너지 전환 장치가 격리된 장착부입니다.'],['radiators','대형 방열 구조','발전과 전력 변환 과정의 폐열을 처리합니다.'],['beam','송전부','광학 또는 마이크로파 계통의 지향성 송신부입니다.'],['support','서비스·차폐부','차폐 모듈, 전력 계측 및 정비 연결부입니다.']]],
  ['SERVICE','보급·지원 시설','Service and logistics station','추진제 저장, 예인선, 보급·정비 선석',
@@ -191,12 +191,51 @@ box(rescue,[-1.7,-1.4,1],[3.0,.26,1.35],'frame');for(const x of [-2.6,-.8])box(r
 const P=[[-1.15,-1.4,-.5],[-2.8,-2.0,1.6],[-3.7,-2.5,3.0],[-4.1,-2.4,4.1]];
 for(let i=0;i<P.length-1;i++){beam(arms,P[i],P[i+1],.13,'alloy');orb(arms,P[i+1],.22,'hazard')}
 return {sensors:[-2.3,2.4,-1],control:[0,1.7,-1.5],rescue:[2.55,-.95,1.1],arms:[-3.7,-2.5,3]}}
-function catcher(){const frame=part('frame'),capture=part('capture'),cargo=part('cargo'),control=part('control');
-for(const [R,z] of [[4.3,-5.4],[3.65,-3.15],[2.3,-1.0]]){octagonal(frame,R,z,.17,'frame',12);for(let i=0;i<12;i+=3){let a=i*Math.PI/6;beam(frame,[Math.cos(a)*R,Math.sin(a)*R,z],[Math.cos(a)*R*.67,Math.sin(a)*R*.67,z+.8],.10,'alloy')}}
-for(let i=0;i<12;i++){const a=i*Math.PI/6;beam(capture,[Math.cos(a)*4.3,Math.sin(a)*4.3,-5.4],[Math.cos(a)*2.3,Math.sin(a)*2.3,-1],.036,'gold');if(i%2===0)orb(capture,[Math.cos(a)*3.65,Math.sin(a)*3.65,-3.15],.1,'light')}
-lattice(cargo,-.4,7.9,1.0,8);for(let z=0.4;z<7;z+=1.2)for(let x of [-.58,.58])box(cargo,[x,-.45,z],[.92,.78,1.05],z%2?'alloy':'white');
-controlPod(control,[0,1.7,5.4],1.05);beacon(control,[0,2.4,5.7]);for(const x of [-2,2])tube(control,[x,0,5.6],[x,0,8.2],.4,'frame');
-return {frame:[-3,3,-5.3],capture:[2.4,2.4,-3.1],cargo:[.6,-.3,3],control:[0,2.0,5.7]}}
+function catcher(){
+ const frame=part('frame'),capture=part('capture'),cargo=part('cargo'),control=part('control');
+ // Not to scale. Four rotating tether assemblies run in the same plane.
+ const R=7.0;
+ ring(frame,1.30,.29,-1.25,'alloy',48);ring(frame,1.10,.07,-1.23,'gold',48);
+ tube(frame,[0,0,-2.55],[0,0,.72],.90,'ceramic',20);
+ for(let i=0;i<4;i++){
+   const a=i*Math.PI/2,ux=Math.cos(a),uy=Math.sin(a),vx=-uy,vy=ux;
+   const pt=(r,t=0,z=-1.25)=>[ux*r+vx*t,uy*r+vy*t,z];
+   for(const t of [-.20,.20])beam(frame,pt(1.1,t,-1.55),pt(R-.38,t,-1.55),.066,'frame',10);
+   for(let r=1.3;r<R-.60;r+=.73){
+     const rr=Math.min(R-.38,r+.73);
+     beam(frame,pt(r,-.2,-1.55),pt(rr,.2,-1.55),.035,'alloy',6);
+     beam(frame,pt(r,.2,-1.55),pt(rr,-.2,-1.55),.035,'alloy',6);
+     beam(frame,pt(r,-.2,-1.55),pt(r,.2,-1.55),.040,'steel',7);
+     beam(frame,pt(r,0,-1.50),pt(r,0,-1.12),.042,'steel',7);
+   }
+   beam(frame,pt(1.2,0,-1.55),pt(R-.25,0,-1.18),.038,'gold',8);
+   for(let r=2;r<R;r+=1.35)box(frame,pt(r,0,-1.06),[.32,.22,.22],'dark').rotation.z=a;
+   const tip=pt(R,0,-1.13);
+   orb(capture,tip,.34,'alloy');
+   const ringTip=ring(capture,.58,.11,tip[2]+.14,'white',36);ringTip.position.x=tip[0];ringTip.position.y=tip[1];
+   const target=pt(R+.56,0,-1.13);
+   beam(capture,pt(R,-.4,-1.05),target,.10,'hazard',10);
+   beam(capture,pt(R,.4,-1.05),target,.10,'hazard',10);
+   for(const t of [-.36,.36]){
+     box(capture,pt(R+.53,t,-.88),[.34,.24,.42],i%2?'hazard':'white').rotation.z=a;
+     orb(capture,pt(R+.61,t,-.53),.075,'light');
+   }
+   beacon(capture,pt(R-.45,0,-.97));
+ }
+ lattice(cargo,.15,6.8,.85,7);
+ for(let z=1;z<5.6;z+=1.25)for(let x of [-.52,.52]){
+   box(cargo,[x,-.4,z],[.86,.68,.98],z>3?'alloy':'white');
+   box(cargo,[x,-.04,z],[.71,.04,.65],'dark');
+ }
+ pressure(control,-3.95,-2.1,.71,'alloy');
+ controlPod(control,[0,1.2,5.9],.91);
+ dish(control,[0,1.6,3.55],.72,.26);
+ for(let x of [-1.55,1.55]){
+   tube(control,[x,0,4.7],[x,0,7.2],.32,'frame',16);
+   beacon(control,[x,.45,7.0]);
+ }
+ return {frame:[-4.5,0,-1.2],capture:[6.6,.3,-.9],cargo:[.7,-.4,2.8],control:[0,1.9,5.9]};
+}
 function power(){const reactor=part('reactor'),rad=part('radiators'),beamG=part('beam'),support=part('support');
 lattice(reactor,-6.3,6,.79,9);for(const z of [-4.4,-1.85,.7]){tube(reactor,[0,0,z-1],[0,0,z+.98],1.05,'alloy',20);for(const zz of [-.92,.90])ring(reactor,1.09,.095,z+zz,'gold',32);
 for(let k=0;k<8;k++){let a=k*Math.PI/4;box(reactor,[Math.cos(a)*1.05,Math.sin(a)*1.05,z],[.27,.3,1.5],'dark')}}
@@ -248,10 +287,11 @@ function finishStation(ty,record){
    const x=Math.cos(a)*3.3,y=Math.sin(a)*3.3;
    box(S,[x,y,1.07],[.72,.14,.45],'solar').rotation.z=a;}
  }
- if(ty==='CATCHER'){const C=parts.capture;
-  for(let i=0;i<16;i++){const a=i*Math.PI/8,x=Math.cos(a)*2.6,y=Math.sin(a)*2.6;
-    beam(C,[x,y,-.98],[-x*.58,-y*.58,-.97],.021,i%3===0?'hazard':'frame',5)}
-  for(let z of [-1.7,-2.5,-3.2])for(let x of [-1.2,1.2]){box(C,[x,-.4,z],[.38,.15,.48],'hazard')}}
+ if(ty==='CATCHER'){
+  // End-effector proximity marker and independent tether inspection nodes.
+  const G=parts.capture;for(let a=0;a<4;a++){const t=a*Math.PI/2;
+  const x=Math.cos(t)*6.1,y=Math.sin(t)*6.1;orb(G,[x,y,-.94],.11,'amber')}}
+
  if(ty==='POWER'){const R=parts.reactor;for(let z=-4.7;z<1.4;z+=.72){for(let a=0;a<8;a++){
   const t=a*Math.PI/4,x=Math.cos(t)*1.06,y=Math.sin(t)*1.06;
   box(R,[x,y,z],[.18,.06,.29],a%2?'dark':'gold').rotation.z=t}}}
@@ -285,7 +325,7 @@ function choose(st){
  while(main.children.length){const old=main.children[0];main.remove(old);old.traverse(o=>{o.geometry?.dispose();o.material?.dispose()})}
  root=new THREE.Group();main.add(root);parts={};anchors=builders[st.type]?.()||service();finishStation(st.type,st);
  const scale=Math.max(.85,Math.min(1.22,.85+Math.log10(Math.max(200,st.mass_t||15000))/18));root.scale.setScalar(scale);
- state.dist=st.type==='YARD'?34:st.type==='ARRAY'?31:st.type==='HUB'?31:st.type==='TERMINAL'?30:st.type==='RELAY'?29:27;state.targetDist=state.dist;
+ state.dist=st.type==='CATCHER'?38:st.type==='YARD'?34:st.type==='ARRAY'?31:st.type==='HUB'?31:st.type==='TERMINAL'?30:st.type==='RELAY'?29:27;state.targetDist=state.dist;
  state.yaw=-.66;state.pitch=.27;state.explode=false;$('#stationyardExplode').setAttribute('aria-pressed','false');
  choosePart(cl[4][0][0]);state.dirty=true;
 }
@@ -317,6 +357,10 @@ function frame(t){requestAnimationFrame(frame);if(!renderer||document.hidden||!h
 if(matchMedia('(max-width:700px)').matches&&t-previous<32)return;
 const dt=Math.min(.07,(t-previous)/1000||.02);previous=t;
 if(state.auto){state.yaw+=dt*.06;state.dirty=true}
+ if(activeRecord?.type==='CATCHER'&&!state.explode){
+   const spin=dt*.052;
+   if(parts.frame&&parts.capture){parts.frame.rotation.z+=spin;parts.capture.rotation.z+=spin;state.dirty=true;}
+ }
 state.dist+=(state.targetDist-state.dist)*Math.min(1,dt*8);
 camera.position.set(Math.sin(state.yaw)*Math.cos(state.pitch)*state.dist,Math.sin(state.pitch)*state.dist,Math.cos(state.yaw)*Math.cos(state.pitch)*state.dist);camera.lookAt(0,0,0);
 const offsets={ring:[-1.0,0,-2],spine:[0,0,0],berths:[1.2,.8,1.4],services:[0,1.7,1.2],docks:[0,0,-2],concourse:[0,0,0],utilities:[1,-1.5,2],dock:[1.5,0,2],gantry:[0,1.5,0],industry:[-1.4,0,-1],service:[-1,0,-2],sensor:[-1.2,0,-1],dishes:[1.1,1.3,0],arrays:[2.3,0,2],core:[0,0,0],frame:[-1,0,-2],emitters:[1,1.5,0],optics:[0,0,0],power:[2.0,-1.2,2],sensors:[-.6,0,0],control:[0,.7,0],rescue:[2,0,1],arms:[-1,0,0],capture:[0,0,-1],cargo:[0,0,1],reactor:[0,0,-1],radiators:[2.1,0,0],beam:[0,1.5,1],support:[0,0,1],tanks:[1.5,-.7,-1]};
@@ -327,7 +371,7 @@ if(!state.dirty&&!moving&&Math.abs(state.targetDist-state.dist)<.002)return;
 renderer.render(scene,camera);
 $('#stationyardCoord').textContent='AZ '+((Math.round(state.yaw*180/Math.PI)%360+360)%360).toString().padStart(3,'0')+'° / EL '+Math.round(state.pitch*180/Math.PI)+'° / ZOOM '+(27/state.dist).toFixed(1)+'×';
 for(const pin of $$('#stationyardPins button')){const position=anchors[pin.dataset.part];if(!position)continue;const G=parts[pin.dataset.part];
-const p=V3(...position).add(G.position).multiplyScalar(root.scale.x).project(camera);const x=(p.x*.5+.5)*state.w,y=(-p.y*.5+.5)*state.h;
+const p=G.localToWorld(V3(...position)).project(camera);const x=(p.x*.5+.5)*state.w,y=(-p.y*.5+.5)*state.h;
 pin.hidden=p.z>1||x<25||y<30||x>state.w-25||y>state.h-25;pin.style.left=x+'px';pin.style.top=y+'px'}
 state.dirty=false}
 choose(V.STATION_BY_ID.E03||catalogue[0]);resize();requestAnimationFrame(frame);
