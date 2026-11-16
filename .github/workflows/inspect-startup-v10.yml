@@ -33,6 +33,14 @@ jobs:
             print('FINISH_DETAIL',repr(s[pos:pos+5000]))
           for pos in [m.start() for m in re.finditer('const enterBtn=',s)]:
             print('BUTTONS_DETAIL',repr(s[max(0,pos-100):pos+2300]))
+                    for m in re.finditer(r'data:[^;,"\\s]+(?:;[^,\\s"]+)*,',s):
+            print('DATA_URI',m.start(),repr(s[m.start():m.start()+90]))
+          for m in re.finditer(r'<(?:audio|source|video|iframe|object|picture|svg)[^>]*>',s,re.I):
+            print('MEDIA_TAG',m.start(),repr(s[m.start():m.start()+180]))
+          lines=sorted(((len(line),i,line[:140]) for i,line in enumerate(s.splitlines(),1)),reverse=True)
+          print('LARGEST_LINES',lines[:12])
+          print('STATIC_ZONE',repr(s[33800:35300]))
+          print('STATIC_END',repr(s[6687000:6693000]))
           print('EXTERNAL_SCRIPTS',re.findall(r'<script[^>]*src=["\047]([^"\047]+)',s))
           print('BODY_TAGS',sum(len(list(re.finditer('<'+tag+'(?: |>)[^>]*>',s))) for tag in ['div','canvas','img','svg']))
           PY
