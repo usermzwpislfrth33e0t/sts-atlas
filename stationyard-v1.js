@@ -111,7 +111,9 @@ function panels(g,xCenter,zCenter,span=4,length=3,y=0){
  for(let s of [-1,1]){const w=span*.44,x=xCenter+s*(span*.26+.38);const slab=box(g,[x,y,zCenter],[w,.035,length],'solar');
  for(let j=0;j<5;j++){let xx=x-w*.5+j*w/4;beam(g,[xx,y+.037,zCenter-length*.48],[xx,y+.037,zCenter+length*.48],.018,'blue',5)}
  for(let j=0;j<5;j++){let z=zCenter-length*.5+j*length/4;beam(g,[x-w*.49,y+.039,z],[x+w*.49,y+.039,z],.014,'frame',5)}
- beam(g,[xCenter,y-.08,zCenter],[x,y,zCenter],.055,'frame')}
+ beam(g,[xCenter,y-.08,zCenter],[x,y,zCenter],.055,'frame');
+  beam(g,[xCenter,0,zCenter-length*.32],[x,y,zCenter-length*.32],.055,'alloy',9);
+  beam(g,[xCenter,0,zCenter+length*.32],[x,y,zCenter+length*.32],.055,'alloy',9)}
 }
 function tanks(g,baseZ=4,number=6,r=0.38){for(let i=0;i<number;i++){const side=i%2?-1:1,layer=Math.floor(i/2),x=side*(.9+layer*.62),y=-.72-(i%3)*.12;const z=baseZ+(layer%2)*.7;
  tube(g,[x,y,z-.85],[x,y,z+.85],r,'white',14);for(const zz of [-.6,.55]){const t=ring(g,r+.03,.05,z+zz,'gold',18);t.position.x=x;t.position.y=y}box(g,[x,y+r,z],[.38,.11,.65],'dark')}}
@@ -122,12 +124,34 @@ function dockingArms(g,zs=[-1.5,1.5,4.5]){for(const z of zs)for(const s of [-1,1
  for(let x=-1.06;x<1.14;x+=.35){beam(g,[x,y+.21,z-.17],[x,y+.21,z+.17],.022,'frame',6)}
  }}
 function trussBox(g,x0,x1,y0,y1,z0,z1){const corners=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];for(const [x,y] of corners)beam(g,[x,y,z0],[x,y,z1],.075,'frame');for(const z of [z0,z1])for(let i=0;i<4;i++){let a=corners[i],b=corners[(i+1)%4];beam(g,[...a,z],[...b,z],.072,'alloy')}for(let i=0;i<4;i++){let a=corners[i],b=corners[(i+1)%4];beam(g,[...a,z0],[...b,z1],.042,'frame')}}
-function dish(g,p,R=1.05,tilt=0){const curve=[];for(let i=0;i<=16;i++){const r=R*i/16;curve.push(new THREE.Vector2(r,-.32+.34*(r/R)**2))}
- const geom=new THREE.LatheGeometry(curve,48);const m=add(g,geom,'alloy',p,[tilt,0,.35]);
- const rim=new THREE.Mesh(new THREE.TorusGeometry(R,.034,6,48),material.ceramic.clone());
- rim.rotation.x=Math.PI/2;rim.position.set(p[0],p[1]+.01,p[2]);rim.userData.part=g.userData.part;g.add(rim);
- for(let k=0;k<12;k++){const a=k*Math.PI/6,rr=R*.90;beam(g,[p[0],p[1]-.28,p[2]],[p[0]+Math.cos(a)*rr,p[1],p[2]+Math.sin(a)*rr],.015,'frame',5)}
- beam(g,[p[0],p[1]-.12,p[2]],[p[0],p[1]+R*.70,p[2]],.045,'frame');orb(g,[p[0],p[1]+R*.70,p[2]],.11,'light');return m}
+function dish(g,p,R=1.05,tilt=0){
+ // Single antenna assembly: rim, curved reflector, feed and braces all turn together.
+ const pivot=new THREE.Group();pivot.userData.part=g.userData.part;g.add(pivot);
+ pivot.position.set(...p);pivot.rotation.x=Math.PI*.5-tilt;
+ const curve=[];for(let i=0;i<=20;i++){const r=R*i/20;curve.push(new THREE.Vector2(r,-.23+.25*(r/R)**2))}
+ const face=add(pivot,new THREE.LatheGeometry(curve,44),'dark');face.material.color.set('#537284');
+ face.material.metalness=.58;face.material.roughness=.49;face.material.side=THREE.DoubleSide;
+ for(const ratio of [.33,.66,1]){
+   const tor=new THREE.Mesh(new THREE.TorusGeometry(R*ratio,ratio===1?.043:.013,5,48),material[ratio===1?'ceramic':'blue'].clone());
+   tor.rotation.x=Math.PI*.5;tor.position.y=-.23+.25*ratio*ratio;
+   tor.userData.part=g.userData.part;pivot.add(tor);
+ }
+ for(let k=0;k<12;k++){
+   const a=k*Math.PI/6,x=Math.cos(a),z=Math.sin(a);
+   beam(pivot,[0,-.2,0],[x*R*.96,.005,z*R*.96],.018,k%3?'frame':'alloy',6);
+   if(k%3===0)beam(pivot,[0,-.66,0],[x*R*.84,-.05,z*R*.84],.039,'frame',7);
+ }
+ tube(pivot,[0,-.8,0],[0,-.22,0],.19,'alloy',10);
+ tube(pivot,[0,-.22,0],[0,R*.32,0],.045,'frame',8);
+ orb(pivot,[0,R*.33,0],.09,'light');
+ for(const a of [0,2*Math.PI/3,4*Math.PI/3])
+   beam(pivot,[Math.cos(a)*R*.81,-.055,Math.sin(a)*R*.81],[0,R*.32,0],.024,'gold',7);
+ const base=[0,0,p[2]-.67],hinge=[p[0],p[1]-.24,p[2]-.28];
+ beam(g,base,hinge,.15,'alloy',12);orb(g,hinge,.21,'frame');
+ for(const sign of [-1,1])
+   beam(g,[sign*.48,0,p[2]-.9],[p[0]+sign*.26,p[1]-.31,p[2]-.2],.049,'frame',8);
+ return pivot;
+}
 function controlPod(g,p=[0,0,0],size=1){box(g,p,[1.7*size,.8*size,1.25*size],'ceramic');box(g,[p[0],p[1]+.25*size,p[2]+.3*size],[1.54*size,.30*size,.18*size],'glass');
 for(const x of [-.7,.7])beacon(g,[p[0]+x*size,p[1]+.48*size,p[2]])}
 function segmentedRing(g,R,z,mat='white'){ring(g,R,.27,z,mat,64);ring(g,R-.27,.055,z,'gold',64);
@@ -179,7 +203,11 @@ lattice(optics,-4.6,6.6,.78,8);pressure(optics,-4.8,-.7,.51,'glass');for(let z=-
 for(let z of [-.6,.9,2.4,3.9,5.4])for(const s of [-1,1]){let x=s*2.1,y=1.15;
 box(emit,[x,y,z],[1.06,.24,.76],'alloy');box(emit,[x,y+.15,z],[.72,.11,.50],'light');
 box(emit,[x,-y,z],[1.06,.24,.76],'alloy');box(emit,[x,-y-.15,z],[.72,.11,.50],'blue');
-beam(emit,[s*.75,0,z],[x,y,z],.061,'frame')}
+for(const side of [-1,1]){
+  beam(emit,[s*.75,0,z],[x,side*y,z],.088,'frame',9);
+  beam(emit,[s*.75,0,z-.31],[x,side*y,z+.31],.049,'alloy',8);
+  orb(emit,[x,side*y,z],.11,'metal');
+ }}
 pressure(power,5.6,8.4,.84,'alloy');panels(power,0,6.8,8.1,3.1,-2.3);controlPod(power,[0,1.4,-4.1],.9);beacon(power,[0,1.8,7.6]);
 return {frame:[-3.2,2.8,-5.0],emitters:[2.1,1.3,2.4],optics:[0,.5,-2.1],power:[3.5,-2.3,6.8]}}
 function safety(){const sensors=part('sensors'),control=part('control'),rescue=part('rescue'),arms=part('arms');
@@ -236,12 +264,41 @@ function catcher(){
  }
  return {frame:[-4.5,0,-1.2],capture:[6.6,.3,-.9],cargo:[.7,-.4,2.8],control:[0,1.9,5.9]};
 }
-function power(){const reactor=part('reactor'),rad=part('radiators'),beamG=part('beam'),support=part('support');
-lattice(reactor,-6.3,6,.79,9);for(const z of [-4.4,-1.85,.7]){tube(reactor,[0,0,z-1],[0,0,z+.98],1.05,'alloy',20);for(const zz of [-.92,.90])ring(reactor,1.09,.095,z+zz,'gold',32);
-for(let k=0;k<8;k++){let a=k*Math.PI/4;box(reactor,[Math.cos(a)*1.05,Math.sin(a)*1.05,z],[.27,.3,1.5],'dark')}}
-for(const s of [-1,1]){for(let z of [-3.3,.2,3.6]){box(rad,[s*3.1,0,z],[3.75,.06,2.2],'copper');for(let j=0;j<6;j++)beam(rad,[s*(1.24+j*.6),.05,z-1.07],[s*(1.24+j*.6),.05,z+1.07],.02,'frame')}}
-pressure(support,3.8,7.2,.73,'white');dish(beamG,[0,.7,7.8],1.76,.9);for(let x of [-1.2,1.2]){dish(beamG,[x,-.6,6.3],.6,.65)}beacon(support,[0,1.6,6.7]);
-return {reactor:[0,1.0,-1.8],radiators:[3.1,0,.2],beam:[0,1.35,7.8],support:[0,.7,5.5]}}
+function power(){
+ const reactor=part('reactor'),rad=part('radiators'),beamG=part('beam'),support=part('support');
+ lattice(reactor,-6.3,7.25,.84,11);
+ for(const z of [-4.4,-1.85,.7]){
+  tube(reactor,[0,0,z-1],[0,0,z+.98],1.05,'alloy',20);
+  for(const zz of [-.92,.90])ring(reactor,1.09,.095,z+zz,'gold',32);
+  for(let k=0;k<8;k++){const a=k*Math.PI/4;box(reactor,[Math.cos(a)*1.05,Math.sin(a)*1.05,z],[.27,.3,1.5],'dark').rotation.z=a}
+ }
+ // Every heat exchanger bank is supported by inboard and outboard continuous spars.
+ for(const sign of [-1,1]){
+  for(const y of [-.12,.12]){
+   beam(rad,[sign*.84,y,-5],[sign*4.92,y,-5],.079,'alloy',9);
+   beam(rad,[sign*.84,y,5],[sign*4.92,y,5],.079,'alloy',9);
+  }
+  beam(rad,[sign*4.92,-.06,-5.1],[sign*4.92,-.06,5.1],.075,'frame');
+  for(const z of [-3.3,.2,3.6]){
+   const p=box(rad,[sign*3.1,0,z],[3.75,.065,2.2],'copper');p.material.color.set('#785549');
+   for(let j=0;j<7;j++)
+     beam(rad,[sign*(1.24+j*.58),.052,z-1.07],[sign*(1.24+j*.58),.052,z+1.07],.015,'frame',5);
+   beam(rad,[sign*.9,-.16,z],[sign*2.22,-.1,z+.7],.066,'frame',8);
+  }
+ }
+ pressure(support,3.45,7.05,.69,'white');
+ beam(support,[0,0,2],[0,0,7.4],.19,'frame',12);
+ dish(beamG,[0,.35,8.2],1.27,.23);
+ for(const sign of [-1,1]){
+  beam(support,[sign*.48,0,5.6],[sign*1.33,-.49,6.48],.105,'alloy',10);
+  beam(support,[sign*1.33,-.49,6.48],[sign*.83,0,7.4],.068,'frame',9);
+  dish(beamG,[sign*1.33,-.40,6.85],.48,.29);
+ }
+ controlPod(support,[0,1.02,4.15],.65);
+ beam(support,[0,.53,4.15],[0,.72,4.15],.12,'alloy');
+ beacon(support,[0,1.2,5.1]);
+ return {reactor:[0,1,-1.8],radiators:[3.1,0,.2],beam:[0,.5,8.2],support:[0,.8,5.4]};
+}
 function service(){const core=part('core'),tanksG=part('tanks'),docks=part('docks'),rad=part('radiators');
 lattice(core,-5.7,6.4,.78,8);pressure(core,-4.8,3.8,.87);controlPod(core,[0,1.25,-3],.95);
 for(const s of [-1,1])for(const y of [-1,1]){let x=s*1.5,yy=y*1.1;tube(tanksG,[x,yy,-4],[x,yy,2],.48,'white');for(let z of [-3.5,.8]){const q=ring(tanksG,.53,.05,z,'gold',20);q.position.x=x;q.position.y=yy}}
