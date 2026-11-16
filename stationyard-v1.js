@@ -206,7 +206,7 @@ box(emit,[x,-y,z],[1.06,.24,.76],'alloy');box(emit,[x,-y-.15,z],[.72,.11,.50],'b
 for(const side of [-1,1]){
   beam(emit,[s*.75,0,z],[x,side*y,z],.088,'frame',9);
   beam(emit,[s*.75,0,z-.31],[x,side*y,z+.31],.049,'alloy',8);
-  orb(emit,[x,side*y,z],.11,'metal');
+  orb(emit,[x,side*y,z],.11,'alloy');
  }}
 pressure(power,5.6,8.4,.84,'alloy');panels(power,0,6.8,8.1,3.1,-2.3);controlPod(power,[0,1.4,-4.1],.9);beacon(power,[0,1.8,7.6]);
 return {frame:[-3.2,2.8,-5.0],emitters:[2.1,1.3,2.4],optics:[0,.5,-2.1],power:[3.5,-2.3,6.8]}}
