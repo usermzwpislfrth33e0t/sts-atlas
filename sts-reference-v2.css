@@ -1,0 +1,46 @@
+/* STS 2120 reference — restrained institutional publication typography */
+.sts-doc-root{margin:36px 0 24px;border-top:1px solid #304250;padding-top:8px}
+.sts-doc-section{padding:32px 0;border-bottom:1px solid #2c3c49}
+.sts-doc-eyebrow{font:10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:1.4px;color:#89afc7;margin-bottom:13px}
+.sts-doc-section h3,.sts-fleet-root h3{font-size:clamp(20px,2.6vw,31px);line-height:1.24;color:#ebf1f4;letter-spacing:-.75px;margin:0 0 12px;font-weight:540}
+.sts-doc-section>p,.sts-fleet-root>p{font-size:13px;line-height:1.9;color:#b0bdc8;max-width:850px;margin:0 0 19px}
+.sts-doc-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:19px 0}
+.sts-doc-columns>div{background:#0d1823;border:1px solid #304251;padding:20px}
+.sts-doc-columns h4{font-size:14px;font-weight:570;margin:0 0 10px;color:#dbeaf4}
+.sts-doc-columns p{font-size:12px;line-height:1.83;color:#a5b5c3;margin:0}
+.sts-doc-table-wrap{overflow-x:auto;max-width:100%;border:1px solid #314455;margin:17px 0 22px}
+.sts-doc-table{border-collapse:collapse;width:100%;min-width:510px;text-align:left;font-size:12px;line-height:1.65;color:#bfd0dc}
+.sts-doc-table th{color:#8eafc7;letter-spacing:.7px;font:10px ui-monospace,Menlo,monospace;font-weight:400;background:#111f2b}
+.sts-doc-table th,.sts-doc-table td{padding:13px 15px;border-bottom:1px solid #283946;vertical-align:top}
+.sts-doc-table tr:last-child td{border-bottom:0}
+.sts-doc-table tbody tr:nth-child(odd){background:#0c161f}
+.sts-doc-table tbody tr:nth-child(even){background:#0e1a25}
+.sts-doc-table tbody td:first-child{color:#e1edf5}
+.sts-doc-note{border-left:2px solid #5d9bbe;margin:18px 0;padding:12px 15px;background:#152532;color:#bed1de;font-size:12px;line-height:1.8}
+.sts-doc-footnote{font-size:11px!important;color:#8fa5b6!important;line-height:1.85!important;padding-top:4px}
+.sts-fleet-root{margin:35px 0 30px;padding:30px 0 10px;border-top:1px solid #365063}
+.sts-fleet-root>p{max-width:870px}
+.sts-fleet-filters{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0}
+.sts-fleet-filters button{border:1px solid #3b5468;background:#111d28;color:#adc2cf;padding:11px 15px;font-size:11px;cursor:pointer}
+.sts-fleet-filters button[aria-pressed="true"]{border-color:#9fc9e3;background:#20394d;color:#f0f7fc}
+.sts-fleet-filters button:focus-visible{outline:2px solid #acd7f5;outline-offset:2px}
+.sts-fleet-root .sts-doc-table td:first-child strong{display:block;font-weight:530;color:#dbe9f1}
+.sts-fleet-root .sts-doc-table td:first-child small{display:block;font-size:10px;color:#7597aa;margin-top:4px}
+.sts-ship-dossier{border-bottom:1px solid #314553;margin:0 25px;padding:18px 0 23px}
+.sts-dossier-title{font:10px ui-monospace,Menlo,monospace;color:#a8cbe1;letter-spacing:.85px;margin-bottom:11px}
+.sts-dossier-row{display:grid;grid-template-columns:100px minmax(0,1fr);align-items:start;gap:12px;padding:9px 0;border-top:1px solid #283946}
+.sts-dossier-row small{font-size:10px;color:#819db1}
+.sts-dossier-row strong{font-size:12px;color:#d3e2ed;line-height:1.5;font-weight:520}
+.sts-ship-dossier p{font-size:11px!important;line-height:1.8;color:#9eb7c5;margin:13px 0 0}
+@media(max-width:700px){
+ .sts-doc-section{padding:24px 0}
+ .sts-doc-columns{grid-template-columns:1fr;gap:10px}
+ .sts-doc-columns>div{padding:16px}
+ .sts-doc-table{font-size:11px;min-width:470px}
+ .sts-doc-table th,.sts-doc-table td{padding:11px 12px}
+ .sts-fleet-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .sts-fleet-filters button{padding:10px 5px;font-size:10px}
+ .sts-fleet-root{margin-top:28px}
+ .sts-ship-dossier{margin:0 19px;padding:13px 0 16px}
+ .sts-dossier-row{grid-template-columns:82px minmax(0,1fr)}
+}
