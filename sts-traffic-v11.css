@@ -51,3 +51,6 @@
  #stsTrafficPanel .sts11-modes button{padding:9px 10px;font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){#stsTrafficPanel *{transition:none!important;animation:none!important}}
+
+#stsTrafficPanel .sts11-follow{width:100%;min-height:37px;margin-top:7px;text-align:left;padding:8px 12px;font-size:10px;letter-spacing:.6px;background:#122636}
+#stsTrafficPanel .sts11-follow[aria-pressed="true"]{color:#b9e8fa;border-color:#83bfdf}
