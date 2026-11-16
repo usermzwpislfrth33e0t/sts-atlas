@@ -90,5 +90,5 @@ jobs:
               if(issues.length)throw Error(name+' browser errors');
               await ctx.close();await browser.close();
             }
-          })().catch(err=>{console.error('TEST_FAIL',err);process.exitCode=1});
+          })().catch(err=>{console.error('TEST_FAIL',err);process.exit(1)});
           JS
