@@ -1,0 +1,91 @@
+name: Audit STS V12 3D geometry and orbital clearances
+on:
+  push:
+    paths:
+      - .github/workflows/audit-v12-models.yml
+      - index.html
+      - stationyard-v1.js
+      - shipyard-v7.js
+      - sts-traffic-v11.js
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax validation
+        run: |
+          node --check shipyard-v7.js
+          node --check stationyard-v1.js
+          node --check sts-traffic-v11.js
+      - name: Browser geometry and path integrity tests
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 > /tmp/sts-audit-server.log 2>&1 &
+          node <<'JS'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            for(const [w,h] of [[1100,820],[390,844]]){
+              const page=await browser.newPage({viewport:{width:w,height:h},deviceScaleFactor:1,isMobile:w<700,hasTouch:w<700});
+              const errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
+              await page.goto('http://127.0.0.1:8765/?direct=atlas&v=v12',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>window.STS_TRAFFIC_V11_READY&&window.STS_STATIONYARD_EXPORT_MODEL&&window.STS_SHIPYARD_EXPORT_MODEL&&window.STS_GET_ATLAS?.(),{timeout:40000});
+              const audit=await page.evaluate(()=>{
+                const V=window.STS3D,atlas=window.STS_GET_ATLAS();
+                const allTypes=[...new Set(V.STATIONS.map(st=>st.type))];
+                const model=(root)=>{
+                  root.updateMatrixWorld(true);let meshes=0,triangles=0,invalid=0,empty=0;
+                  const extent=[Infinity,Infinity,Infinity],upper=[-Infinity,-Infinity,-Infinity];
+                  root.traverse(o=>{
+                    if(!o.isMesh)return;meshes++;
+                    const pos=o.geometry?.attributes.position;
+                    if(!pos){empty++;return}
+                    const arr=pos.array;const stride=pos.itemSize;
+                    for(let i=0;i<pos.count;i+=Math.max(1,Math.floor(pos.count/2048))){
+                      const x=arr[i*stride],y=arr[i*stride+1],z=arr[i*stride+2];
+                      if(![x,y,z].every(Number.isFinite))invalid++;
+                      const m=o.matrixWorld.elements;const v=[m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14]];
+                      for(let k=0;k<3;k++){extent[k]=Math.min(extent[k],v[k]);upper[k]=Math.max(upper[k],v[k])}
+                    }
+                    triangles+=Math.floor((o.geometry.index?.count||pos.count)/3);
+                  });
+                  return {meshes,triangles,invalid,empty,extent:extent.map((n,i)=>Number((upper[i]-n).toFixed(1)))};
+                };
+                const stations=allTypes.map(type=>({type,...model(window.STS_STATIONYARD_EXPORT_MODEL(type))}));
+                const ships=['freighter','clipper','fusion','tug'].map(type=>({type,...model(window.STS_SHIPYARD_EXPORT_MODEL(type))}));
+                const primaries=V.BODIES.filter(b=>['STAR','PLANET'].includes(b.type)||b.id==='LUNA');
+                const intersections=[];
+                for(const route of V.ROUTES){
+                  for(let i=1;i<route.points.length-1;i++){
+                    const p=route.points[i];
+                    for(const body of primaries){
+                      const d=Math.hypot(...p.map((n,k)=>n-body.xyz[k]));
+                      if(d<body.size*.98){intersections.push({route:route.id,body:body.id,point:i,penetration:Math.round((body.size-d)*10)/10});break}
+                    }
+                  }
+                }
+                const satellites=V.BODIES.filter(b=>b.type==='MOON'&&['Jupiter','Saturn'].includes(b.sector));
+                const buried=satellites.filter(b=>{const h=V.LOOK[b.sector.toUpperCase()];return Math.hypot(...b.xyz.map((n,k)=>n-h.xyz[k]))<h.size+b.size}).map(x=>x.id);
+                const exterior=V.STATIONS.filter(st=>['Earth','Luna','Mars'].includes(st.region)).filter(st=>{
+                  const h=st.region==='Earth'?V.LOOK.EARTH:st.region==='Luna'?V.LOOK.LUNA:V.LOOK.MARS;
+                  return Math.hypot(...st.xyz.map((n,k)=>n-h.xyz[k]))<h.size;
+                }).map(x=>x.id);
+                const shipSpan=Math.max(...ships.filter(x=>x.type==='clipper').map(x=>Math.max(...x.extent)*.36));
+                return {mapScale:V.MAP_SCALE,earthRadius:V.LOOK.EARTH.size,stationTypes:stations,ships,intersectionCount:intersections.length,intersections:intersections.slice(0,12),buried,exterior,shipToEarthDiameter:shipSpan/(2*V.LOOK.EARTH.size),routeCount:V.ROUTES.length};
+              });
+              console.log('GEOMETRY_AUDIT_'+w,JSON.stringify(audit));
+              if(audit.mapScale!==8||audit.stationTypes.length<9||audit.stationTypes.some(x=>x.invalid||x.empty||x.triangles<120||x.extent.some(e=>!Number.isFinite(e)))||
+                audit.ships.some(x=>x.invalid||x.empty||x.triangles<120)||
+                audit.buried.length||audit.exterior.length||audit.shipToEarthDiameter>.20){
+                  throw Error('STATION_OR_SHIP_INTEGRITY_FAILED '+JSON.stringify(audit));
+              }
+              if(audit.intersectionCount>0)throw Error('PLANET_INTERSECTIONS '+JSON.stringify(audit.intersections));
+              console.log('BROWSER_ERRORS_'+w,JSON.stringify(errors));if(errors.length)throw Error('BROWSER_RUNTIME_ERRORS');
+              await page.close();
+            }
+            await browser.close();
+          })().catch(err=>{console.error('AUDIT_FAILED',err);process.exit(1)});
+          JS
