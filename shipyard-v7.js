@@ -4,7 +4,7 @@ import * as THREE from './vendor/three.module.js';
 const host=document.getElementById('vesselsView');
 if(!host)throw new Error('Shipyard host missing');
 const specs=[
- {id:'freighter',serial:'01 / BULK CARGO',name:'Beam-sail freighter',role:'Cargo / bulk',drive:'Station-beamed electric',frame:'Segmented rectenna receiver',use:'Interplanetary cargo',desc:'STS 화물선의 대형 세일은 광압을 이용하는 돛이 아니라 정거장에서 송신한 전력을 받는 수신막입니다. 수신된 전력은 집전 버스와 변환계를 거쳐 선내 전기 추진계로 공급됩니다. 긴 화물 트러스에는 규격화된 컨테이너·탱크를 독립 장착합니다.',parts:[['membrane','분할 반사막','마이크로파 렉테나 또는 광전 수신 셀을 여러 구획으로 분리합니다. 집전 회로와 열감시 회로가 각 구획에 분산되며 광압 자체가 주 추진력인 것은 아닙니다.'],['booms','전개 붐과 장력재','중앙 허브와 방사형 붐, 외곽 장력재가 수신막의 평탄도와 전개 형상을 유지합니다.'],['bus','항법·제어 구획','전력 집전·변환, 송전 빔 추적, 항법·통신·자세제어 기능이 한곳에 배치됩니다.'],['payload','화물 트러스','중심 구조와 분리된 규격 화물 컨테이너·산업재 탱크의 장착 구역입니다.'],['thrusters','접근 추진부','수신 전력으로 구동하는 전기 추진부와 도킹용 보조 스러스터를 구분합니다.']]},
+ {id:'freighter',serial:'01 / BULK CARGO',name:'Beam-sail freighter',role:'Cargo / bulk',drive:'Station-beamed electric',frame:'Segmented rectenna receiver',use:'Interplanetary cargo',desc:'대형 분할 세일은 광압 추진용 돛이 아니라 정거장의 마이크로파·레이저 전력을 받는 렉테나·광전 수신막입니다. 화물 트러스 끝의 수신막 중앙에는 하중 전달용 개구부를 두고, 주 전기추진기는 수신막보다 훨씬 후방에 배치합니다. 노즐은 선미 방향으로 배기하여 추진 중 수신막이 배기류에 직접 노출되지 않도록 했습니다.',parts:[['membrane','분할 반사막','마이크로파 렉테나 또는 광전 수신 셀을 여러 구획으로 분리합니다. 집전 회로와 열감시 회로가 각 구획에 분산되며 광압 자체가 주 추진력인 것은 아닙니다.'],['booms','전개 붐과 장력재','중앙 허브와 방사형 붐, 외곽 장력재가 수신막의 평탄도와 전개 형상을 유지합니다.'],['bus','항법·제어 구획','전력 집전·변환, 송전 빔 추적, 항법·통신·자세제어 기능이 한곳에 배치됩니다.'],['payload','화물 트러스','중심 구조와 분리된 규격 화물 컨테이너·산업재 탱크의 장착 구역입니다.'],['thrusters','후방 전기 추진부','주 전기추진기 2기는 수신막보다 선미 쪽에 있으며 배기축은 선체 뒤를 향합니다. 추진 하중은 중앙 트러스를 따라 전달되며, 도킹용 보조 스러스터는 별도 계통입니다.']]},
  {id:'clipper',serial:'02 / EXPRESS SERVICE',name:'Beam-sail clipper',role:'Express service',drive:'Hybrid beamed power',frame:'Tandem receiver wings',use:'Priority transfer',desc:'고출력 송전창을 이용하는 G4 급행형 세일선입니다. 전후방의 분할 수신막은 마이크로파와 레이저 전력을 받아 전력 변환계로 전달합니다. 승무원 캡슐과 소형 우선 화물 팟을 중심축에 집중 배치하여 화물량보다 운항 시간을 우선합니다.',parts:[['membrane','전후방 세일 패널','전후방 수신막에는 마이크로파 정류 셀과 레이저 광전 셀을 구역별로 배치합니다.'],['booms','회전 마스트','접이식·회전식 마스트가 수신면의 정렬과 진동 억제를 담당합니다.'],['bus','승무원 캡슐','항법실, 승무원 생활구역, 축전계, 중앙 전력 버스와 비상 제어계를 포함합니다.'],['payload','신속 화물 팟','긴급 화물과 우선 여객 서비스에 맞춘 독립 밀폐 팟입니다.'],['thrusters','접근 추진기','항로 추진용 전기 추진계와 정거장 접근용 보조 기동 추진계를 분리합니다.']]},
  {id:'fusion',serial:'03 / LONG RANGE',name:'Fusion transport',role:'Crew and logistics',drive:'Onboard fusion',frame:'Axial truss / thermal radiators',use:'Outer-system transfer',desc:'핵융합선은 STS 송전망 밖에서도 독립 항행할 수 있습니다. 후방 반응로와 주 추진부를 전방 승무원 구역에서 긴 종축 트러스로 분리하고, 측면 방열익을 통해 폐열을 처리합니다. 회전 거주 링은 장거리 유인 임무를 위한 구성입니다.',parts:[['habitat','회전 거주 링','원심 가속을 이용하는 장거리 승무원 거주 구획입니다.'],['spine','종축 트러스','추력 하중을 전달하고 승무원 구획과 반응로 사이에 차폐 거리를 확보합니다.'],['radiators','대면적 방열기','전력 변환과 반응로의 폐열을 배출하는 분리형 방열판입니다.'],['reactor','핵융합 반응로','선내 에너지를 생산하는 핵융합 계통과 연료 관리·차폐 구역입니다.'],['engine','후방 추진 노즐','임무에 따라 저추력·펄스 추진계를 적용하며 보조 자세제어 엔진을 따로 둡니다.']]},
  {id:'tug',serial:'04 / ORBITAL OPERATIONS',name:'Orbital tug',role:'Towing and salvage',drive:'Chemical / electric',frame:'Capture ring and manipulators',use:'Station operations',desc:'정거장과 궤도 캐처 주변에서 선체·화물 모듈을 견인하고 조립 작업을 지원하는 단거리 작업선입니다. 포획 링, 관절형 암, 추진제·작업 장비 탱크를 갖추며 장거리 세일선과 달리 다방향 기동성과 도킹 정밀도를 우선합니다.',parts:[['arms','포획 링·작업 암','표준 결합 링과 다관절 매니퓰레이터로 구조재·화물 모듈을 고정합니다.'],['bus','조종·센서실','근접 항법, 도킹 제어, 관측 센서와 작업자 밀폐 공간을 포함합니다.'],['payload','추진제·운송 탱크','추진제와 교체식 정비 장비의 독립 저장부입니다.'],['thrusters','다방향 스러스터','정거장 근접에서 병진·회전·제동을 정밀 제어하는 다방향 추진계입니다.']]}
@@ -129,7 +129,14 @@ function reflectedWing(g,s,z0,spread=1){const vs=[],cols=[],inds=[],nx=15,ny=5;
 }
 function buildFreighter(){
  const sail=setPart('membrane'),booms=setPart('booms'),bus=setPart('bus'),payload=setPart('payload'),drive=setPart('thrusters');
- addSail(sail,6.05,-5.1);structuralTruss(payload,-3.65,6.65,.72,1.25);rod(bus,[0,0,-5.4],[0,0,8.3],.18,'steel',12);
+ // Receiver aperture at z=-5.1. The slender thrust spine passes through
+ // the central aperture, while both engine nozzles are farther aft (−Z).
+ addSail(sail,6.05,-5.1);
+ structuralTruss(payload,-3.65,6.65,.72,1.25);
+ structuralTruss(booms,-8.55,-3.58,.32,1.0);
+ rod(bus,[0,0,-9.7],[0,0,8.3],.18,'steel',12);
+ for(const z of [-6.15,-7.58,-8.70])ring(booms,.53,.055,z,'metal',28);
+ box(booms,[0,0,-7.0],[.77,.77,1.35],'darkEngine');
  for(const x of [-1,1])for(const y of [-1,1]){rod(booms,[x*4.1,y*4.1,-4.72],[x*.6,y*.6,-2.4],.04,'metal',8);rod(booms,[x*.56,y*.56,-5],[x*.46,y*.46,-3.05],.055,'steel',7)}
  for(let z=-2.75;z<6.1;z+=1.6)for(const x of [-.39,.39])for(const y of [-.38,.38]){
     box(payload,[x,y,z],[.67,.58,1.36],((Math.round(z*10)+Math.round(x*10))%3===0)?'ceramic':'metal');
@@ -140,19 +147,21 @@ function buildFreighter(){
  tapered(bus,[0,0,7.55],[0,0,8.4],.60,.08,'steel',16);
  ring(bus,.88,.06,6.37,'bronze',36);
  box(bus,[0,.66,6.97],[.86,.12,.55],'glass');
- // Engineering axis: +Z bow, -Z stern/exhaust. The former nozzle rings
- // floated at the axis instead of following the two off-axis engines.
+ // PROTECTED EXHAUST KEEP-OUT / +Z = bow, −Z = nozzle exhaust.
+ // Sail envelope: z ≈ −5.10 to −4.73, radius 0.65..6.05.
+ // Nozzles: z = −9.59; thrust exhaust to −Z, away from the sail.
+ // Two balanced electric drive pods are carried by the central thrust spine.
  for(const sign of [-1,1]){
-  const x=sign*1.10,y=-.39;
-  // Main electric propulsion is mounted behind the cargo truss, adjacent
-  // to the sail receiver hub, not on the pointed +Z crew capsule.
-  tapered(drive,[x,y,-2.90],[x,y,-4.32],.30,.41,'hull',14);
-  const rim=ring(drive,.42,.075,-4.34,'bronze',24),glow=ring(drive,.28,.055,-4.41,'glow',24);
-  for(const part of [rim,glow]){part.position.x=x;part.position.y=y}
-  rod(drive,[sign*.69,-.16,-2.60],[x,y,-3.83],.074,'steel',9);
-  rod(drive,[0,0,-3.23],[x,y,-3.09],.052,'metal',8);
+   const x=sign*.43,y=0;
+   tapered(drive,[x,y,-7.46],[x,y,-9.48],.24,.32,'darkEngine',20);
+   const rim=ring(drive,.34,.065,-9.53,'bronze',28);
+   const glow=ring(drive,.25,.044,-9.59,'glow',28);
+   rim.position.x=glow.position.x=x;
+   for(const z of [-7.50,-8.76])
+     rod(drive,[0,0,z],[x,y,z],.072,'steel',9);
+   rod(drive,[sign*.31,sign*.30,-7.20],[x,y,-7.62],.08,'steel',10);
  }
- return {membrane:[-3.15,2.7,-4.65],booms:[3.4,2.5,-4.1],bus:[0,.65,7.35],payload:[.7,.75,2.8],thrusters:[1.1,-.39,-4.35]};
+ return {membrane:[-3.15,2.7,-4.65],booms:[.4,.44,-6.8],bus:[0,.65,7.35],payload:[.7,.75,2.8],thrusters:[.43,0,-9.54]};
 }
 function buildClipper(){
  const sail=setPart('membrane'),booms=setPart('booms'),bus=setPart('bus'),payload=setPart('payload'),drive=setPart('thrusters');
