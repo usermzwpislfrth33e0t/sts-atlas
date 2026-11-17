@@ -80,12 +80,12 @@ jobs:
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
           ref_css='<link rel="stylesheet" href="./sts-reference-v2.css?v=2.2">'
-          ref_js='<script defer src="./sts-reference-v2.js?v=2.2"></script>'
+          ref_js='<script defer src="./sts-reference-v2.js?v=2.3"></script>'
           if 'sts-reference-v2.css' not in source:
               source=source.replace('</head>',ref_css+'\n</head>',1)
           if 'sts-reference-v2.js' not in source:
               source=source.replace('</body></html>',ref_js+'\n</body></html>',1)
-          source=source.replace('sts-reference-v2.js?v=2.1','sts-reference-v2.js?v=2.2')
+          source=source.replace('sts-reference-v2.js?v=2.1','sts-reference-v2.js?v=2.3')
           source=source.replace('sts-reference-v2.css?v=2.1','sts-reference-v2.css?v=2.2')
           if index.read_text(encoding='utf-8') != source:
               index.write_text(source, encoding='utf-8')
@@ -126,6 +126,17 @@ jobs:
           node --check shipyard-v7.js
           node --check stationyard-v1.js
           node --check sts-reference-v2.js
+          node --check sts-chronicle-data.js
+          node --check sts-historical-book.js
+          node --check sts-history-v1.js
+          test -s sts-history-v1.css
+          test -s sts-chronicle-data.js
+          test -s sts-historical-book.js
+          grep -q 'sts-history-v1.css?v=1.1' index.html
+          grep -q 'sts-history-v1.js?v=1.0' index.html
+          grep -q 'sts-chronicle-data.js?v=1.0' index.html
+          grep -q 'sts-historical-book.js?v=1.0' index.html
+          grep -q 'sts-reference-v2.js?v=2.3' index.html
           node --check sts-terminal-v9.js
           test -s sts-terminal-v9.css
           test -s assets/sts-ambient.mp3
