@@ -115,7 +115,7 @@ const fleet=[
 ['급행·특송','MSV Swift','Packet','우편·소화물'],
 ['급행·특송','MSV Dart','Packet','우편·소화물'],
 ['급행·특송','MSV Relay Finch','Packet','소형 자동화 특송'],
-['화물 세일선','MSV Resolute','G3-C-IV-M','대량 규격 화물'],
+['화물 세일선','MSV Resolute','G2-C-III-M','대량 규격 화물'],
 ['화물 세일선','MSV Iron Crest','G3-B-V-H','광석·산업재 벌크'],
 ['화물 세일선','MSV Borealis Grain','G2-C-III-M','표준 화물'],
 ['화물 세일선','MSV Outer Reach','G4-B-V-H','대형 장거리 벌크'],
