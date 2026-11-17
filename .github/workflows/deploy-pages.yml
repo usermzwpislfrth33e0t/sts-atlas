@@ -131,8 +131,8 @@ jobs:
           node --check sts-history-v1.js
           node --check sts-release-v2.js
           test -s sts-release-v2.css
-          grep -q 'sts-release-v2.js?v=2.0' index.html
-          grep -q 'sts-release-v2.css?v=2.0' index.html
+          grep -q 'sts-release-v2.js?v=2.1' index.html
+          grep -q 'sts-release-v2.css?v=2.1' index.html
           test -s sts-history-v1.css
           test -s sts-chronicle-data.js
           test -s sts-historical-book.js
