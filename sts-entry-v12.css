@@ -1,6 +1,6 @@
 /* STS 12.0 / Network gateway — independent presentation layer
    Precedence deliberately outranks legacy portal/terminal rules. */
-#portal.sts12-portal{background:#060c14!important;color:#e1eaf1!important;display:flex!important;flex-direction:column!important;min-height:100svh!important;height:auto!important;overflow:hidden!important;isolation:isolate;animation:none!important;opacity:1;position:relative}
+#portal.sts12-portal{background:#060c14!important;color:#e1eaf1!important;display:flex;flex-direction:column!important;min-height:100svh!important;height:auto!important;overflow:hidden!important;isolation:isolate;animation:none!important;opacity:1;position:relative}
 #portal.sts12-portal>:not(.sts12-display){display:none!important}
 #portal.sts12-portal:before,#portal.sts12-portal:after{content:none!important}
 #portal .sts12-display,#portal .sts12-display *{box-sizing:border-box}
