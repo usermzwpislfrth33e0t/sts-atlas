@@ -82,8 +82,8 @@ jobs:
                 const sequence=await page.locator('#sr2Sequence').textContent();
                 if(!sequence.includes('0'+step+' / 03'))throw Error('INVALID_RELEASE_SEQUENCE '+step+' '+sequence);
                 if(await page.locator('#sr2Checks .sr2-check').count()!==6)throw Error('VERIFICATION_CHAIN_MISSING');
-                const modalWidth=await page.evaluate(()=>document.querySelector('.sr2-console').scrollWidth);
-                if(width===390&&modalWidth>window.innerWidth+4)throw Error('RELEASE_CONSOLE_MOBILE_OVERFLOW');
+                const modalMetrics=await page.evaluate(()=>({content:document.querySelector('.sr2-console').scrollWidth,viewport:window.innerWidth}));
+                if(width===390&&modalMetrics.content>modalMetrics.viewport+4)throw Error('RELEASE_CONSOLE_MOBILE_OVERFLOW '+JSON.stringify(modalMetrics));
                 await page.locator('#sr2Fast').click();
                 await page.waitForFunction(step=>window.STS_HISTORY_DIAGNOSTICS().access===step,step,{timeout:15000});
                 await page.locator('#sr2Return').click();
