@@ -142,6 +142,12 @@ jobs:
           grep -q 'sts-historical-book.js?v=1.0' index.html
           grep -q 'sts-reference-v2.js?v=2.3' index.html
           node --check sts-terminal-v9.js
+          node --check sts-entry-v12.js
+          node --check sts-sound-v12.js
+          test -s sts-entry-v12.css
+          grep -q 'sts-entry-v12.js?v=12.0' index.html
+          grep -q 'sts-sound-v12.js?v=12.0' index.html
+          grep -q 'sts-entry-v12.css?v=12.0' index.html
           test -s sts-terminal-v9.css
           test -s assets/sts-ambient.mp3
           test $(stat -c%s index.html) -lt 450000
