@@ -1,0 +1,51 @@
+name: Verify published STS V12 gateway
+on:
+  workflow_run:
+    workflows: ["Deploy STS Navigation Atlas"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check real GitHub Pages gateway on desktop and phone
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          node <<'NODE'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+           const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+           const base='https://usermzwpislfrth33e0t.github.io/sts-atlas/';
+           for(const width of [1280,390]){
+             const page=await browser.newPage({viewport:{width,height:850},isMobile:width===390,hasTouch:width===390});
+             const errors=[],failed=[];page.on('pageerror',e=>errors.push(e.message));
+             page.on('response',r=>{if(r.status()>=400)failed.push(r.status()+' '+r.url())});
+             await page.goto(base+'?v=gateway-public-12.1',{waitUntil:'domcontentloaded',timeout:60000});
+             await page.waitForFunction(()=>window.STS_GATEWAY_V12_READY===true,{timeout:45000});
+             const snapshot=await page.evaluate(()=>({
+               ready:window.STS_GATEWAY_V12_DIAGNOSTICS(),
+               primary:document.querySelector('#sts12Primary .sts12-main-action')?.getBoundingClientRect().height,
+               portal:getComputedStyle(document.getElementById('portal')).display,
+               css:[...document.styleSheets].some(s=>String(s.href).includes('sts-entry-v12.css?v=12.1')),
+               canvas:[document.getElementById('sts12Canvas').width,document.getElementById('sts12Canvas').height],
+               overflow:document.documentElement.scrollWidth-window.innerWidth
+             }));
+             console.log('LIVE_GATEWAY_'+width,JSON.stringify(snapshot));
+             if(!snapshot.ready.terminal||!snapshot.css||snapshot.portal==='none'||snapshot.primary<50||snapshot.canvas[0]<50||snapshot.overflow>4)throw Error('LIVE_GATEWAY_INVALID '+width);
+             const img=await page.screenshot({type:'jpeg',quality:70,animations:'disabled'});
+             const s=img.toString('base64');for(let i=0;i<s.length;i+=1000)console.log('LIVE_GATEWAY_SHOT_'+width+'_'+Math.floor(i/1000)+' '+s.slice(i,i+1000));
+             await page.locator('#sts12Primary .sts12-main-action').click();
+             await page.waitForFunction(()=>document.querySelector('#sts9BootOverlay')?.classList.contains('sts9-boot-open'),{timeout:10000});
+             await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:20000});
+             const done=await page.evaluate(()=>({view:document.querySelector('.view.active')?.id,portal:getComputedStyle(document.getElementById('portal')).display,app:document.getElementById('app').classList.contains('ready')}));
+             console.log('LIVE_GATEWAY_DONE_'+width,JSON.stringify(done));
+             if(!done.app||done.portal!=='none'||done.view!=='homeView')throw Error('LIVE_TRANSITION_FAIL '+width);
+             if(errors.length||failed.length)throw Error('LIVE_BROWSER_ERRORS '+JSON.stringify({errors,failed}));
+             await page.close();
+           }
+           await browser.close();
+          })().catch(e=>{console.error('LIVE_GATEWAY_FAILED',e.stack||e);process.exit(1)});
+          NODE
