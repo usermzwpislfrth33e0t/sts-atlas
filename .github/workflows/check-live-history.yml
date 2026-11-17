@@ -1,0 +1,52 @@
+name: Verify published STS historical archive
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/check-live-history.yml]
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check public GitHub Pages and capture history screens
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          node <<'NODE'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            const base='https://usermzwpislfrth33e0t.github.io/sts-atlas/';
+            for(const width of [1280,390]){
+              const page=await browser.newPage({viewport:{width,height:850},deviceScaleFactor:1,isMobile:width===390,hasTouch:width===390});
+              const errors=[],failed=[];page.on('pageerror',e=>errors.push(e.message));
+              page.on('response',r=>{if(r.status()>=400)failed.push([r.status(),r.url()])});
+              await page.goto(base+'?v=history-v1',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>window.STS_HISTORY_READY===true,{timeout:40000});
+              const loaded=await page.evaluate(()=>({
+               data:window.STS_HISTORY_DIAGNOSTICS(),
+               scripts:[...document.scripts].filter(s=>/sts-(?:chronicle|historical|history)/.test(s.src)).map(s=>s.src)
+              }));
+              console.log('PUBLIC_HISTORY_READY_'+width,JSON.stringify(loaded));
+              if(loaded.scripts.length<3||loaded.data.events!==39||loaded.data.chapters!==8)throw Error('PUBLIC_ARCHIVE_INCOMPLETE');
+              await page.evaluate(()=>{document.getElementById('enterBtn').click();document.getElementById('bootSkip').click();window.STS_NAVIGATE('chronology')});
+              await page.waitForTimeout(450);
+              const snapshot=async(name)=>{
+                const b=await page.screenshot({type:'jpeg',quality:69,fullPage:false});
+                const x=b.toString('base64');for(let i=0;i<x.length;i+=960)console.log('HISTORY_VISUAL_'+name+'_'+Math.floor(i/960)+' '+x.slice(i,i+960));
+              };
+              await snapshot('CHRONOLOGY'+width);
+              await page.evaluate(()=>window.STS_NAVIGATE('records'));
+              await page.waitForTimeout(320);
+              if(width===390)await snapshot('LOCKED'+width);
+              for(let i=0;i<3;i++){await page.locator('#stsAccessRequest').click();await page.waitForFunction(n=>window.STS_HISTORY_DIAGNOSTICS().access>=n,i+1,{timeout:5000})}
+              if(width===1280){await page.locator('#stsBookToc [data-chapter="4"]').click();await snapshot('RELEASED'+width)}
+              else await snapshot('RELEASED'+width);
+              console.log('PUBLIC_HISTORY_ERRORS_'+width,JSON.stringify({errors,failed}));
+              if(errors.length||failed.length)throw Error('PUBLIC_BROWSER_ERRORS');
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error('PUBLIC_HISTORY_TEST_FAILED',e.stack||e);process.exit(1)});
+          NODE
