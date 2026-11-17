@@ -1,0 +1,64 @@
+name: Verify STS Network Gateway V12
+on:
+  push:
+    paths:
+      - index.html
+      - sts-entry-v12.js
+      - sts-entry-v12.css
+      - sts-sound-v12.js
+      - .github/workflows/test-entry-v12.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gateway:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate gateway scripts
+        run: |
+          node --check sts-entry-v12.js
+          node --check sts-sound-v12.js
+          test -s sts-entry-v12.css
+      - name: Audit gateway, sound and mobile entry
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 >/tmp/sts-gateway-server.log 2>&1 &
+          node <<'NODE'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+           const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+           for(const width of [1280,390]){
+            const page=await browser.newPage({viewport:{width,height:850},deviceScaleFactor:1,isMobile:width<700,hasTouch:width<700});
+            let errs=[],assets=[];page.on('pageerror',e=>errs.push(e.stack||e.message));page.on('response',r=>{if(r.status()>=400)assets.push([r.status(),r.url()])});
+            await page.goto('http://127.0.0.1:8765/?v=gateway-test',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>window.STS_GATEWAY_V12_READY===true,{timeout:30000});
+            const start=await page.evaluate(()=>({
+              portal:!!document.querySelector('#portal.sts12-portal'),
+              source:window.STS_GATEWAY_V12_DIAGNOSTICS(),
+              boot:!!document.querySelector('#sts9BootOverlay'),
+              newView:getComputedStyle(document.querySelector('.sts12-display')).display,
+              legacyHidden:getComputedStyle(document.querySelector('.sts9-stage')).display,
+              visiblePrimary:document.querySelector('#sts12Primary .sts12-main-action').getBoundingClientRect().height,
+              canvas:[document.querySelector('#sts12Canvas').width,document.querySelector('#sts12Canvas').height],
+              overflow:document.documentElement.scrollWidth-window.innerWidth
+            }));
+            console.log('GATEWAY_START_'+width,JSON.stringify(start));
+            if(!start.portal||!start.source.terminal||!start.boot||start.newView==='none'||start.legacyHidden!=='none'||start.visiblePrimary<50||!start.canvas[0]||start.overflow>3)throw Error('GATEWAY_MOUNT_INVALID '+width);
+            const shot=await page.locator('#portal').screenshot({type:'jpeg',quality:72,animations:'disabled'});
+            const data=shot.toString('base64');for(let i=0;i<data.length;i+=800)console.log('GATEWAY_SHOT_'+width+'_'+Math.floor(i/800)+' '+data.slice(i,i+800));
+            await page.locator('#sts12Primary .sts12-main-action').click();
+            await page.waitForFunction(()=>document.querySelector('#sts9BootOverlay').classList.contains('sts9-boot-open'),{timeout:5000});
+            const during=await page.evaluate(()=>({transfer:!!document.querySelector('#sts12Transfer.on'),boot:window.STS_TERMINAL_V9_STATE?.started,started:window.STS_GATEWAY_V12_DIAGNOSTICS().launched}));
+            console.log('GATEWAY_BOOT_'+width,JSON.stringify(during));
+            if(!during.transfer||!during.started)throw Error('GATEWAY_CLICK_FAIL');
+            await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:15000});
+            const final=await page.evaluate(()=>({ready:document.querySelector('#app').classList.contains('ready'),view:document.querySelector('.view.active')?.id,overlay:document.querySelector('#sts9BootOverlay').getAttribute('aria-hidden')}));
+            console.log('GATEWAY_COMPLETE_'+width,JSON.stringify(final));
+            if(!final.ready||final.view!=='homeView'||final.overlay!=='true')throw Error('GATEWAY_TRANSITION_FAIL');
+            await page.close();
+            if(errs.length||assets.length)throw Error('GATEWAY_BROWSER_ERRORS '+JSON.stringify({errs,assets}));
+           }
+           await browser.close();
+          })().catch(e=>{console.error('GATEWAY_TEST_FAILED',e.stack||e);process.exit(1)});
+          NODE
