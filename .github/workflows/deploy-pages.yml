@@ -147,7 +147,7 @@ jobs:
           test -s sts-entry-v12.css
           grep -q 'sts-entry-v12.js?v=12.0' index.html
           grep -q 'sts-sound-v12.js?v=12.0' index.html
-          grep -q 'sts-entry-v12.css?v=12.0' index.html
+          grep -q 'sts-entry-v12.css?v=12.1' index.html
           test -s sts-terminal-v9.css
           test -s assets/sts-ambient.mp3
           test $(stat -c%s index.html) -lt 450000
