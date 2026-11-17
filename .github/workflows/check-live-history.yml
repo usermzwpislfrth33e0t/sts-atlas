@@ -43,6 +43,12 @@ jobs:
               for(let i=0;i<3;i++){
                 await page.locator('#stsAccessRequest').click();
                 await page.locator('#sr2Shade').waitFor({state:'visible'});
+                const metrics=await page.evaluate(()=>{
+                  const n=document.getElementById('sr2Shade'),c=document.querySelector('.sr2-console'),a=getComputedStyle(n),b=n.getBoundingClientRect();
+                  return {pos:a.position,z:a.zIndex,display:a.display,width:b.width,height:b.height,consoleWidth:c.getBoundingClientRect().width,loaded:[...document.styleSheets].some(s=>String(s.href).includes('sts-release-v2.css'))};
+                });
+                console.log('PUBLIC_RELEASE_OVERLAY_'+width,JSON.stringify(metrics));
+                if(metrics.pos!=='fixed'||+metrics.z<1000||metrics.height<500||!metrics.loaded)throw Error('RELEASE_OVERLAY_STYLES_MISSING');
                 if(i===1)await snapshot('VERIFY_CONSOLE'+width);
                 await page.locator('#sr2Fast').click();
                 await page.waitForFunction(n=>window.STS_HISTORY_DIAGNOSTICS().access>=n,i+1,{timeout:15000});
