@@ -7,6 +7,8 @@ on:
       - sts-historical-book.js
       - sts-history-v1.js
       - sts-history-v1.css
+      - sts-release-v2.js
+      - sts-release-v2.css
       - .github/workflows/test-history-v1.yml
   workflow_dispatch:
 permissions:
@@ -21,6 +23,8 @@ jobs:
           node --check sts-chronicle-data.js
           node --check sts-historical-book.js
           node --check sts-history-v1.js
+          node --check sts-release-v2.js
+          test -s sts-release-v2.css
           node - <<'NODE'
           const fs=require('fs'),vm=require('vm'),ctx={window:{}};
           for(const p of ['sts-chronicle-data.js','sts-historical-book.js'])vm.runInNewContext(fs.readFileSync(p,'utf8'),ctx,{filename:p});
@@ -66,9 +70,24 @@ jobs:
               await page.locator('#chronologyView .sts-hist-back').click();
               await page.locator('button[data-view="records"]').first().click();
               if(await page.locator('#stsBookPage .sts-book-prose p').count()!==0)throw Error('RESTRICTED_DOCUMENT_EXPOSED');
+              if(!await page.evaluate(()=>window.STS_RELEASE_V2_ACTIVE))throw Error('RELEASE_CONSOLE_MISSING');
+              // Cancelling a procedure before authorization must not unlock content.
+              await page.locator('#stsAccessRequest').click();
+              await page.locator('#sr2Shade').waitFor({state:'visible'});
+              await page.locator('#sr2Abort').click();
+              if(await page.evaluate(()=>window.STS_HISTORY_DIAGNOSTICS().access)!==0)throw Error('CANCEL_MODIFIED_ACCESS');
               for(let step=1;step<=3;step++){
                 await page.locator('#stsAccessRequest').click();
-                await page.waitForFunction(step=>window.STS_HISTORY_DIAGNOSTICS().access===step,step,{timeout:6000});
+                await page.locator('#sr2Shade').waitFor({state:'visible'});
+                const sequence=await page.locator('#sr2Sequence').textContent();
+                if(!sequence.includes('0'+step+' / 03'))throw Error('INVALID_RELEASE_SEQUENCE '+step+' '+sequence);
+                if(await page.locator('#sr2Checks .sr2-check').count()!==6)throw Error('VERIFICATION_CHAIN_MISSING');
+                const modalWidth=await page.evaluate(()=>document.querySelector('.sr2-console').scrollWidth);
+                if(width===390&&modalWidth>window.innerWidth+4)throw Error('RELEASE_CONSOLE_MOBILE_OVERFLOW');
+                await page.locator('#sr2Fast').click();
+                await page.waitForFunction(step=>window.STS_HISTORY_DIAGNOSTICS().access===step,step,{timeout:15000});
+                await page.locator('#sr2Return').click();
+                await page.locator('#sr2Shade').waitFor({state:'hidden'});
                 console.log('HISTORY_ACCESS_'+width,step);
                 const paragraphs=await page.locator('#stsBookPage .sts-book-prose p').count();
                 if((step===1&&paragraphs!==0)||(step===2&&paragraphs!==1)||(step===3&&paragraphs<5))throw Error('ACCESS_LEVEL_INVALID '+step+' '+paragraphs);
