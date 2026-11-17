@@ -1,0 +1,100 @@
+name: Verify STS historical archive and official chronology
+on:
+  push:
+    paths:
+      - index.html
+      - sts-chronicle-data.js
+      - sts-historical-book.js
+      - sts-history-v1.js
+      - sts-history-v1.css
+      - .github/workflows/test-history-v1.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and canonical source integrity
+        run: |
+          node --check sts-chronicle-data.js
+          node --check sts-historical-book.js
+          node --check sts-history-v1.js
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm'),ctx={window:{}};
+          for(const p of ['sts-chronicle-data.js','sts-historical-book.js'])vm.runInNewContext(fs.readFileSync(p,'utf8'),ctx,{filename:p});
+          const c=ctx.window.STS_CHRONICLE,b=ctx.window.STS_HISTORICAL_BOOK;
+          const count=c.eras.reduce((n,e)=>n+e.events.length,0);
+          console.log('SOURCE_COUNTS',JSON.stringify({eras:c.eras.length,events:count,chapters:b.chapters.length,registry:c.registry.rows.length}));
+          if(c.eras.length!==5||count!==39||b.chapters.length!==8||c.registry.rows.length!==5)process.exit(2);
+          for(const [i,ch] of b.chapters.entries())if(ch.body.length<500||ch.body.split(/\n\s*\n/).length<5)throw Error('Chapter truncated '+(i+1));
+          for(const t of ['2087.10.17.','2120.05.16.'])if(!c.eras.some(e=>e.events.some(x=>x[0]===t)))throw Error('Critical chronology item missing: '+t);
+          if(!b.chapters[4].body.includes('탑승자는 승객 58명과 승무원 8명')||!b.chapters[7].body.includes('그 혜택이 모든 지역에 같은 속도로 돌아간 것은 아니었다'))throw Error('Book text truncated');
+          NODE
+          grep -q 'sts-history-v1.js?v=1.0' index.html
+          grep -q 'data-view="chronology"' index.html
+          grep -q 'data-view="records"' index.html
+      - name: Chromium desktop and mobile archive interactions
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 > /tmp/sts-historical-server.log 2>&1 &
+          node <<'NODE'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            for(const [width,height] of [[1280,800],[390,844]]){
+              const page=await browser.newPage({viewport:{width,height},isMobile:width<700,hasTouch:width<700});
+              const errors=[],failedAssets=[];
+              page.on('pageerror',e=>errors.push(e.stack||e.message));
+              page.on('response',r=>{if(r.status()>=400)failedAssets.push(r.status()+' '+r.url())});
+              await page.goto('http://127.0.0.1:8765/?v=history-test',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>window.STS_HISTORY_READY===true,{timeout:30000});
+              const counts=await page.evaluate(()=>window.STS_HISTORY_DIAGNOSTICS());
+              console.log('HISTORY_SOURCE_'+width,JSON.stringify(counts));
+              if(counts.events!==39||counts.chapters!==8||counts.eras!==5||counts.registry!==5||!counts.primer||!counts.reader)throw Error('MISSING_DOCUMENT_SOURCE');
+              await page.evaluate(()=>{document.getElementById('enterBtn').click();document.getElementById('bootSkip').click()});
+              await page.waitForFunction(()=>document.getElementById('app').classList.contains('ready'),{timeout:15000});
+              await page.locator('button[data-view="chronology"]').first().click();
+              await page.waitForTimeout(250);
+              if(await page.locator('#chronologyView .sts-event').count()!==7)throw Error('ERA_FILTER_2023_FAIL');
+              await page.locator('#stsHistorySearch').fill('Kestrel');
+              if(await page.locator('#chronologyView .sts-event').count()!==1)throw Error('SEARCH_CROSS_ERA_FAIL');
+              await page.locator('#chronologyView .sts-event summary').first().click();
+              const chronText=await page.locator('#chronologyView .sts-event-body').first().textContent();
+              if(!chronText.includes('66명 중 13명'))throw Error('CHRONOLOGY_EXCERPT_TRUNCATED');
+              await page.locator('#chronologyView .sts-hist-back').click();
+              await page.locator('button[data-view="records"]').first().click();
+              if(await page.locator('#stsBookPage .sts-book-prose p').count()!==0)throw Error('RESTRICTED_DOCUMENT_EXPOSED');
+              for(let step=1;step<=3;step++){
+                await page.locator('#stsAccessRequest').click();
+                await page.waitForFunction(step=>window.STS_HISTORY_DIAGNOSTICS().access===step,step,{timeout:6000});
+                console.log('HISTORY_ACCESS_'+width,step);
+                const paragraphs=await page.locator('#stsBookPage .sts-book-prose p').count();
+                if((step===1&&paragraphs!==0)||(step===2&&paragraphs!==1)||(step===3&&paragraphs<5))throw Error('ACCESS_LEVEL_INVALID '+step+' '+paragraphs);
+              }
+              await page.locator('#stsBookToc [data-chapter="4"]').click();
+              const kestrel=await page.locator('#stsBookPage').textContent();
+              if(!kestrel.includes('EM-417')||!kestrel.includes('53명')||!kestrel.includes('거주 구획'))throw Error('KESTREL_HISTORICAL_TEXT_MISSING');
+              await page.locator('#stsBookToc [data-chapter="7"]').click();
+              const end=await page.locator('#stsBookPage').textContent();
+              if(!end.includes('그 혜택이 모든 지역에 같은 속도로 돌아간 것은 아니었다'))throw Error('HISTORICAL_END_TRUNCATED');
+              const overflow=await page.evaluate(()=>({
+                view:document.querySelector('.view.active')?.id,
+                viewport:window.innerWidth,
+                document:document.documentElement.scrollWidth,
+                archive:document.getElementById('recordsView').scrollWidth
+              }));
+              console.log('HISTORY_LAYOUT_'+width,JSON.stringify(overflow));
+              if(overflow.view!=='recordsView'||overflow.archive>overflow.viewport+15)throw Error('ARCHIVE_MOBILE_OVERFLOW');
+              await page.reload({waitUntil:'domcontentloaded'});
+              await page.waitForFunction(()=>window.STS_HISTORY_READY,{timeout:30000});
+              if(await page.evaluate(()=>window.STS_HISTORY_DIAGNOSTICS().access)!==3)throw Error('RELEASE_NOT_PERSISTED');
+              const issues=failedAssets.filter(x=>!x.includes('favicon.ico'));
+              console.log('HISTORY_ERRORS_'+width,JSON.stringify({errors,issues}));
+              if(errors.length||issues.length)throw Error('BROWSER_ERRORS');
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error('HISTORY_TEST_FAILED',e.stack||e);process.exit(1)});
+          NODE
