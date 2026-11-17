@@ -47,6 +47,7 @@ var html=[
  '<h2 id="sr2Title">ACCESS REQUEST REGISTRATION</h2><p class="sr2-intro" id="sr2Intro"></p>',
  '<div class="sr2-visual"><div class="sr2-visual-label"><span>ARCHIVE RECONCILIATION ENGINE / VISUAL TRACE</span><span id="sr2GraphTag">NODE 01 · INDEX</span></div>',
  '<canvas id="sr2Canvas" aria-label="보관소 색인과 검사 진행 상황을 나타내는 가상 네트워크 그래픽"></canvas>',
+ '<div class="sr2-seal" aria-hidden="true"><span>STA / RECORD CONTROL</span><strong id="sr2Seal">VERIFIED</strong><small>VOL. III / 2128 REVISION</small></div>',
  '<div class="sr2-visual-foot"><span id="sr2GraphicCaption">REFERENCE SET / STA-HR-2128</span><span id="sr2GraphicPercent">00.0%</span></div></div>',
  '<div class="sr2-readings"><div><small>DOCUMENT</small><strong>HISTORICAL RECORDS / VOL. III</strong></div><div><small>REVISION</small><strong>2128 · REVISED EDITION</strong></div><div><small>CURRENT OPERATION</small><strong id="sr2Current">INITIALIZING</strong></div></div>',
  '</div><aside class="sr2-side"><div class="sr2-side-head"><span>PROCESS VALIDATION</span><span id="sr2Count">00 / 06</span></div>',
@@ -131,6 +132,7 @@ function completeSequence(){
  box.classList.add('sr2-done');
  put('sr2Title',stage.result);
  put('sr2Intro',stage.resultKo);
+ put('sr2Seal',stageIndex===2?'PUBLIC RELEASE':'RECORD ACCEPTED');
  put('sr2FootText','DOCUMENT RELEASE RECORD / '+stage.code+' COMPLETE');
  line('[ '+stamp()+' ]  ✓ ALL CONTROL RECORDS RECONCILED');
  line('[ '+stamp()+' ]  ✓ '+stage.result);
@@ -210,7 +212,7 @@ function paint(now){
  if(w<10||h<10)return;
  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
- var cx=w*.50,cy=h*.50,R=Math.min(w*.255,h*.415),sec=(now-startTime)/1000;
+ var cx=w*.50,cy=h*.50,R=Math.min(w*.255,h*.30),sec=(now-startTime)/1000;
  var p=stepIndex/stage.checks.length,ang=reduce?0:sec*.28,TAU=Math.PI*2;
  // Measured structural grid, understated enough to preserve document legibility.
  ctx.strokeStyle='rgba(116,160,190,.075)';ctx.lineWidth=.75;
@@ -256,9 +258,7 @@ function paint(now){
  ctx.font='500 '+Math.max(15,Math.min(24,w*.035))+'px ui-monospace, monospace';
  ctx.fillText('VOL. III',cx,cy-10);
  ctx.fillStyle='#7dabc7';ctx.font='11px ui-monospace,monospace';ctx.fillText('REV / 2128',cx,cy+18);
- ctx.font='9px ui-monospace,monospace';ctx.fillStyle='#85a4b8';
- ctx.textAlign='left';ctx.fillText('NODE / STA-HR-03',18,h-17);ctx.textAlign='right';ctx.fillText(stage.code+' · '+('0'+stepIndex).slice(-2),w-18,h-17);
- if(reduce)cancelAnimationFrame(frame);
+  if(reduce)cancelAnimationFrame(frame);
 }
 window.STS_RELEASE_V2_DIAGNOSTICS=function(){return {installed:true,active:active,stage:stageIndex+1,step:stepIndex,committing:committing,finished:finished,access:access(),checks:stage?stage.checks.length:0}};
 })();
