@@ -40,7 +40,15 @@ jobs:
               await page.evaluate(()=>window.STS_NAVIGATE('records'));
               await page.waitForTimeout(320);
               if(width===390)await snapshot('LOCKED'+width);
-              for(let i=0;i<3;i++){await page.locator('#stsAccessRequest').click();await page.waitForFunction(n=>window.STS_HISTORY_DIAGNOSTICS().access>=n,i+1,{timeout:5000})}
+              for(let i=0;i<3;i++){
+                await page.locator('#stsAccessRequest').click();
+                await page.locator('#sr2Shade').waitFor({state:'visible'});
+                if(i===1)await snapshot('VERIFY_CONSOLE'+width);
+                await page.locator('#sr2Fast').click();
+                await page.waitForFunction(n=>window.STS_HISTORY_DIAGNOSTICS().access>=n,i+1,{timeout:15000});
+                await page.locator('#sr2Return').click();
+                await page.locator('#sr2Shade').waitFor({state:'hidden'});
+              }
               if(width===1280){await page.locator('#stsBookToc [data-chapter="4"]').click();await snapshot('RELEASED'+width)}
               else await snapshot('RELEASED'+width);
               console.log('PUBLIC_HISTORY_ERRORS_'+width,JSON.stringify({errors,failed}));
