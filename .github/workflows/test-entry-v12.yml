@@ -53,9 +53,9 @@ jobs:
             console.log('GATEWAY_BOOT_'+width,JSON.stringify(during));
             if(!during.transfer||!during.started)throw Error('GATEWAY_CLICK_FAIL');
             await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:15000});
-            const final=await page.evaluate(()=>({ready:document.querySelector('#app').classList.contains('ready'),view:document.querySelector('.view.active')?.id,overlay:document.querySelector('#sts9BootOverlay').getAttribute('aria-hidden')}));
+            const final=await page.evaluate(()=>({ready:document.querySelector('#app').classList.contains('ready'),view:document.querySelector('.view.active')?.id,overlay:document.querySelector('#sts9BootOverlay').getAttribute('aria-hidden'),portal:getComputedStyle(document.getElementById('portal')).display}));
             console.log('GATEWAY_COMPLETE_'+width,JSON.stringify(final));
-            if(!final.ready||final.view!=='homeView'||final.overlay!=='true')throw Error('GATEWAY_TRANSITION_FAIL');
+            if(!final.ready||final.view!=='homeView'||final.overlay!=='true'||final.portal!=='none')throw Error('GATEWAY_TRANSITION_FAIL '+JSON.stringify(final));
             await page.close();
             if(errs.length||assets.length)throw Error('GATEWAY_BROWSER_ERRORS '+JSON.stringify({errs,assets}));
            }
