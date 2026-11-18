@@ -89,6 +89,14 @@
 @keyframes sts13-core-pulse{50%{opacity:.27;transform:scale(1.07)}}
 .sts13-orbit-nodes{position:absolute;inset:0;z-index:5;pointer-events:none}
 .sts13-node{position:absolute;left:50%;top:50%;width:124px;min-height:65px;padding:6px 8px;transform:translate(-50%,-50%);border:0;background:transparent;color:#b3cada;cursor:pointer;pointer-events:auto;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;transition:color .22s,filter .22s;will-change:left,top}
+/* The orbital symbols drift inside stationary, reliably tappable hitboxes. */
+.sts13-node-dot{animation:sts13-node-drift 4.1s ease-in-out infinite}
+.sts13-node:nth-child(2) .sts13-node-dot{animation-delay:-1.4s}
+.sts13-node:nth-child(3) .sts13-node-dot{animation-delay:-2.6s}
+.sts13-node:nth-child(4) .sts13-node-dot{animation-delay:-.9s}
+.sts13-node:nth-child(5) .sts13-node-dot{animation-delay:-3.1s}
+.sts13-node:nth-child(6) .sts13-node-dot{animation-delay:-1.9s}
+@keyframes sts13-node-drift{0%,100%{translate:0 -3px}50%{translate:0 4px}}
 .sts13-node-dot{display:block;width:14px;height:14px;border:1px solid #a7cce2;border-radius:50%;background:radial-gradient(circle at 28% 22%,#dceef6,#568eaf 54%,#203d54);box-shadow:0 0 0 5px rgba(119,171,205,.085),0 0 17px rgba(111,180,216,.22);transition:transform .26s,background .26s,box-shadow .26s}
 .sts13-node-text{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid rgba(128,172,199,.21);background:rgba(8,19,30,.85);padding:6px 9px;min-width:104px;box-shadow:0 4px 13px rgba(0,0,0,.3)}
 .sts13-node-text small{font:9px ui-monospace,Menlo,monospace;color:#648aa3}
@@ -191,6 +199,6 @@
  .sts13-gateway .sts12-copy h1>span,.sts13-gateway .sts12-chapter,
  .sts13-gateway .sts12-section-label,.sts13-gateway .sts12-description,
  .sts13-gateway .sts12-databand,.sts13-title-frequency span,
- .sts13-core-ring,.sts13-core-pulse,.sts13-inspect-orb{animation:none!important}
+ .sts13-core-ring,.sts13-core-pulse,.sts13-inspect-orb,.sts13-node-dot{animation:none!important}
  .sts13-curtain *,.sts13-node,.sts13-open{transition:none!important}
 }
