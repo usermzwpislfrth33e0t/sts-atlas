@@ -64,7 +64,9 @@ jobs:
               console.log('V13_HIT_'+width,JSON.stringify(hit));
               if(!hit.correct)throw Error('V13_HIT_TEST_MISMATCH '+JSON.stringify(hit));
               if(width<700)await page.touchscreen.tap(hit.point[0],hit.point[1]);else await page.mouse.click(hit.point[0],hit.point[1]);
-              if((await page.locator('#sts13SelectedTitle').textContent()).trim()!=='역사기록 보관소')throw Error('V13_SELECTION_FAILED');
+              const selectionAfter=await page.evaluate(()=>({title:document.getElementById('sts13SelectedTitle').textContent,selected:window.STS_V13_DIAGNOSTICS().selected,visible:document.elementFromPoint(hit.point[0],hit.point[1])?.outerHTML.slice(0,110)}));
+              console.log('V13_SELECT_'+width,JSON.stringify(selectionAfter));
+              if(selectionAfter.title.trim()!=='역사기록 보관소')throw Error('V13_SELECTION_FAILED '+JSON.stringify(selectionAfter));
               await page.locator('#sts13Open').click();
               await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='recordsView',{timeout:10000});
               await page.locator('#homeView').evaluate(()=>window.STS_NAVIGATE('home'));
