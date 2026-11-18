@@ -1,0 +1,51 @@
+name: Verify published STS V13 orbital interface
+on:
+  workflow_run:
+    workflows: ["Deploy STS Navigation Atlas"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-v13:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Browser-check published GitHub Pages
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          node <<'NODE'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            for(const width of [1280,390]){
+              const page=await browser.newPage({viewport:{width,height:850},isMobile:width<700,hasTouch:width<700});
+              const errors=[],assets=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              page.on('response',r=>{if(r.status()>=400)assets.push([r.status(),r.url()])});
+              await page.goto('https://usermzwpislfrth33e0t.github.io/sts-atlas/?v=orbital-13.1',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>window.STS_V13_READY===true,{timeout:35000});
+              await page.waitForTimeout(300);
+              const boot=await page.evaluate(()=>({version:window.STS_V13_DIAGNOSTICS(),hero:document.getElementById('sts13HeliosCanvas').width,css:[...document.styleSheets].some(s=>String(s.href).includes('sts-v13.css?v=13.1')),overflow:document.documentElement.scrollWidth-innerWidth}));
+              console.log('PUBLIC_V13_GATE_'+width,JSON.stringify(boot));
+              if(!boot.version.ready||!boot.css||boot.hero<100||boot.overflow>5)throw Error('V13_LIVE_GATEWAY_FAIL '+width);
+              await page.locator('#sts12Primary .sts12-main-action').click();
+              await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:15000});
+              await page.waitForTimeout(400);
+              const menu=await page.evaluate(()=>({active:document.querySelector('.view.active')?.id,canvas:document.getElementById('sts13OrbitCanvas').width,buttons:document.querySelectorAll('#sts13Nodes [data-orbit-index]').length,legacy:getComputedStyle(document.querySelector('#homeView .home-grid')).display,overflow:document.documentElement.scrollWidth-innerWidth}));
+              console.log('PUBLIC_V13_MENU_'+width,JSON.stringify(menu));
+              if(menu.active!=='homeView'||menu.canvas<100||menu.buttons!==6||menu.legacy!=='none'||menu.overflow>5)throw Error('V13_LIVE_MENU_FAIL '+width);
+              const c=await page.evaluate(()=>{const b=document.querySelector('#sts13Nodes [data-orbit-index="5"]'),r=b.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]});
+              if(width<700)await page.touchscreen.tap(...c);else await page.mouse.click(...c);
+              const selection=await page.locator('#sts13SelectedTitle').textContent();
+              console.log('PUBLIC_V13_SELECTION_'+width,selection);
+              if(selection.trim()!=='역사기록 보관소')throw Error('V13_LIVE_SELECTION_FAIL '+width);
+              await page.locator('#sts13Open').click();
+              await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='recordsView',{timeout:10000});
+              console.log('PUBLIC_V13_ERRORS_'+width,JSON.stringify({errors,assets}));
+              if(errors.length||assets.length)throw Error('V13_LIVE_BROWSER_ERRORS '+JSON.stringify({errors,assets}));
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error('V13_LIVE_FAILED',e.stack||e);process.exit(1)});
+          NODE
