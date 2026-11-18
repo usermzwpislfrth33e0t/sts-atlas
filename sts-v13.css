@@ -53,6 +53,7 @@
 .sts13-curtain.step2 .sts13-curtain-progress i{width:58%}
 .sts13-curtain.step3 .sts13-curtain-progress i{width:84%}
 .sts13-curtain.releasing .sts13-curtain-progress i{width:100%}
+.sts13-curtain.releasing .sts13-curtain-corner{opacity:0;transition:opacity .24s ease}
 .sts13-curtain-corner{position:absolute;bottom:32px;right:32px;z-index:4;font-size:9px;letter-spacing:1px;color:#5d7b90}
 @keyframes sts13-title-in{from{transform:translateY(15px);opacity:0;filter:blur(4px)}to{transform:none;opacity:1;filter:none}}
 @keyframes sts13-intro-in{from{transform:translateY(7px);opacity:0}to{transform:none;opacity:1}}
@@ -105,6 +106,16 @@
 .sts13-node:hover .sts13-node-dot,.sts13-node.selected .sts13-node-dot{transform:scale(1.25);background:radial-gradient(circle at 25% 20%,#fff,#a7def6 48%,#447f9f);box-shadow:0 0 0 7px rgba(137,196,224,.12),0 0 30px rgba(156,220,251,.38)}
 .sts13-node.selected .sts13-node-text{border-color:#85b7d5;background:#193248;box-shadow:0 0 22px rgba(89,155,202,.19)}
 .sts13-node:focus-visible{outline:2px solid #d9f3ff;outline-offset:5px}
+/* Distinct orbital markers: restrained mineral/planetary material cues. */
+.sts13-node:nth-child(2) .sts13-node-dot{background:radial-gradient(circle at 29% 23%,#f1f1ed,#8799aa 58%,#293749)}
+.sts13-node:nth-child(3) .sts13-node-dot{background:radial-gradient(circle at 29% 23%,#ffe2cb,#b3796e 55%,#48343b)}
+.sts13-node:nth-child(4) .sts13-node-dot{background:radial-gradient(circle at 29% 23%,#dceced,#689e9b 55%,#254349)}
+.sts13-node:nth-child(5) .sts13-node-dot{background:radial-gradient(circle at 29% 23%,#f0ddba,#ac9275 55%,#483e35)}
+.sts13-node:nth-child(6) .sts13-node-dot{background:radial-gradient(circle at 29% 23%,#d8dded,#798ba6 55%,#282f49)}
+.sts13-inspect[data-index="2"] .sts13-inspect-planet{background:radial-gradient(circle at 29% 24%,#f2ddd2,#a87368 43%,#3a292d 78%)}
+.sts13-inspect[data-index="3"] .sts13-inspect-planet{background:radial-gradient(circle at 29% 24%,#ddf4e7,#61908e 43%,#193b43 78%)}
+.sts13-inspect[data-index="4"] .sts13-inspect-planet{background:radial-gradient(circle at 29% 24%,#f1e3c8,#9c886b 43%,#383128 78%)}
+.sts13-inspect[data-index="5"] .sts13-inspect-planet{background:radial-gradient(circle at 29% 24%,#dbe4f3,#7187a5 43%,#252e43 78%)}
 .sts13-inspect{border:1px solid #395269;display:flex;min-width:0;flex-direction:column;position:relative;overflow:hidden;background:linear-gradient(165deg,#101e2b,#09131d 72%);padding:23px}
 .sts13-inspect:before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#8dbed9 0%,#8dbed9 28%,#254257 28%,transparent 100%)}
 .sts13-inspect-head{display:flex;justify-content:space-between;gap:10px;font:9px/1.5 ui-monospace,Menlo,monospace;letter-spacing:1px;color:#92b2c6}
