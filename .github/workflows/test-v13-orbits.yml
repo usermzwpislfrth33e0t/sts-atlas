@@ -57,6 +57,12 @@ jobs:
               const stage=page.locator('.sts13-orbit-stage');
               const stageRect=await stage.boundingBox();
               if(home.nodePositions.some(([x,y,w,h])=>x<stageRect.x-4||x+w>stageRect.x+stageRect.width+4||y<stageRect.y-4||y+h>stageRect.y+stageRect.height+4))throw Error('V13_MENU_NODE_CLIPPED '+width);
+              const hit=await page.evaluate(()=>{
+                const b=document.querySelector('#sts13Nodes [data-orbit-index="5"]'),r=b.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+                return {point:[x,y],nodePointer:getComputedStyle(b).pointerEvents,rootPointer:getComputedStyle(b.parentElement).pointerEvents,display:getComputedStyle(b).display,visibility:getComputedStyle(b).visibility,position:getComputedStyle(b).position,z:getComputedStyle(b).zIndex,top:document.elementFromPoint(x,y)?.outerHTML.slice(0,260),stack:document.elementsFromPoint(x,y).slice(0,6).map(e=>e.tagName+'#'+e.id+'.'+e.className)};
+              });
+              console.log('V13_HIT_'+width,JSON.stringify(hit));
+              if(!String(hit.top).includes('data-orbit-index'))throw Error('V13_HIT_TEST_MISMATCH '+JSON.stringify(hit));
               await page.locator('#sts13Nodes [data-orbit-index="5"]').click();
               if((await page.locator('#sts13SelectedTitle').textContent()).trim()!=='역사기록 보관소')throw Error('V13_SELECTION_FAILED');
               await page.locator('#sts13Open').click();
