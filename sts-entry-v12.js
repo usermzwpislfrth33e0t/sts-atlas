@@ -92,7 +92,7 @@ let seed=70127;const stars=[];
 for(let i=0;i<110;i++){seed=(seed*1664525+1013904223)>>>0;const x=seed/4294967295;seed=(seed*1664525+1013904223)>>>0;stars.push({x,y:seed/4294967295,k:i%13===0?1.35:.65})}
 let raf=0,prev=-100;
 function draw(t){
- if(!portal.isConnected||launched||portal.style.display==='none')return;
+ if(!portal.isConnected||launched||window.STS_V13_READY||portal.style.display==='none')return;
  raf=requestAnimationFrame(draw);
  if(document.visibilityState==='hidden'||t-prev<(reduced?140:36))return;prev=t;
  if(!ctx)return;
