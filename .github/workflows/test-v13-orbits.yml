@@ -63,6 +63,7 @@ jobs:
               await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='recordsView',{timeout:10000});
               await page.locator('#homeView').evaluate(()=>window.STS_NAVIGATE('home'));
               await page.locator('#sts13Nodes [data-orbit-index="0"]').click();
+              await page.locator('#sts13Open').click();
               await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='atlasView',{timeout:10000});
               console.log('V13_NAV_'+width,JSON.stringify({records:true,atlas:true,errors,assets}));
               if(errors.length||assets.length)throw Error('V13_BROWSER_ERRORS '+JSON.stringify({errors,assets}));
