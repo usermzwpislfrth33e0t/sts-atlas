@@ -1,0 +1,73 @@
+name: Audit STS V13 Orbital Interface
+on:
+  push:
+    paths:
+      - index.html
+      - sts-v13.js
+      - sts-v13.css
+      - .github/workflows/test-v13-orbits.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  orbital:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check V13 assets
+        run: |
+          node --check sts-v13.js
+          test -s sts-v13.css
+          grep -q 'sts-v13.js?v=13.0' index.html
+      - name: Test gateway and navigation on desktop and iPhone viewport
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.57.0
+          python3 -m http.server 8765 > /tmp/sts-v13-http.log 2>&1 &
+          node <<'NODE'
+          const {chromium}=require('playwright-core'),{execSync}=require('child_process');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:execSync('which google-chrome || which chromium').toString().trim(),args:['--no-sandbox','--disable-gpu-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+            for(const width of [1280,390]){
+              const page=await browser.newPage({viewport:{width,height:850},isMobile:width<700,hasTouch:width<700,deviceScaleFactor:1});
+              const errors=[],assets=[];
+              page.on('pageerror',e=>errors.push(e.stack||e.message));
+              page.on('response',r=>{if(r.status()>=400)assets.push(r.status()+' '+r.url())});
+              await page.goto('http://127.0.0.1:8765/?v=v13-test',{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForFunction(()=>window.STS_V13_READY===true,{timeout:30000});
+              await page.waitForTimeout(320);
+              const gateway=await page.evaluate(()=>({state:window.STS_V13_DIAGNOSTICS(),monitor:document.querySelector('.sts13-monitor')?.getBoundingClientRect().height,hero:document.querySelector('#sts13HeliosCanvas')?.width,oldView:getComputedStyle(document.querySelector('#portal .sts12-display')).display,overflow:document.documentElement.scrollWidth-window.innerWidth}));
+              console.log('V13_GATEWAY_'+width,JSON.stringify(gateway));
+              if(!gateway.state.ready||gateway.state.nodes!==6||gateway.hero<100||gateway.monitor<200||gateway.overflow>4)throw Error('V13_GATEWAY_INVALID '+width);
+              await page.locator('#sts12Primary .sts12-main-action').click();
+              await page.waitForFunction(()=>window.STS_TERMINAL_V9_STATE?.finished===true,{timeout:15000});
+              await page.waitForTimeout(200);
+              const home=await page.evaluate(()=>({
+                active:document.querySelector('.view.active')?.id,
+                orbitCanvas:document.getElementById('sts13OrbitCanvas').width,
+                menuButtons:document.querySelectorAll('#sts13Nodes .sts13-node').length,
+                oldGrid:getComputedStyle(document.querySelector('#homeView .home-grid')).display,
+                portal:getComputedStyle(document.getElementById('portal')).display,
+                overflow:document.documentElement.scrollWidth-innerWidth,
+                nodePositions:[...document.querySelectorAll('#sts13Nodes .sts13-node')].map(b=>{let a=b.getBoundingClientRect();return [Math.round(a.left),Math.round(a.top),Math.round(a.width),Math.round(a.height)]})
+              }));
+              console.log('V13_HOME_'+width,JSON.stringify(home));
+              if(home.active!=='homeView'||home.orbitCanvas<100||home.menuButtons!==6||home.oldGrid!=='none'||home.portal!=='none'||home.overflow>5)throw Error('V13_HOME_INVALID '+width);
+              const screenshot=await page.locator('#homeView').screenshot({type:'jpeg',quality:75,animations:'disabled'});
+              const b64=screenshot.toString('base64');for(let i=0;i<b64.length;i+=850)console.log('V13_HOME_SHOT_'+width+'_'+Math.floor(i/850)+' '+b64.slice(i,i+850));
+              const stage=page.locator('.sts13-orbit-stage');
+              const stageRect=await stage.boundingBox();
+              if(home.nodePositions.some(([x,y,w,h])=>x<stageRect.x-4||x+w>stageRect.x+stageRect.width+4||y<stageRect.y-4||y+h>stageRect.y+stageRect.height+4))throw Error('V13_MENU_NODE_CLIPPED '+width);
+              await page.locator('#sts13Nodes [data-orbit-index="5"]').click();
+              if((await page.locator('#sts13SelectedTitle').textContent()).trim()!=='역사기록 보관소')throw Error('V13_SELECTION_FAILED');
+              await page.locator('#sts13Open').click();
+              await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='recordsView',{timeout:10000});
+              await page.locator('#homeView').evaluate(()=>window.STS_NAVIGATE('home'));
+              await page.locator('#sts13Nodes [data-orbit-index="0"]').click();
+              await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='atlasView',{timeout:10000});
+              console.log('V13_NAV_'+width,JSON.stringify({records:true,atlas:true,errors,assets}));
+              if(errors.length||assets.length)throw Error('V13_BROWSER_ERRORS '+JSON.stringify({errors,assets}));
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error('V13_TEST_FAILED',e.stack||e);process.exit(1)});
+          NODE
