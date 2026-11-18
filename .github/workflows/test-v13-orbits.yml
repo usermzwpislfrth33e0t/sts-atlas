@@ -18,7 +18,7 @@ jobs:
         run: |
           node --check sts-v13.js
           test -s sts-v13.css
-          grep -q 'sts-v13.js?v=13.0' index.html
+          grep -q 'sts-v13.js?v=13.1' index.html
       - name: Test gateway and navigation on desktop and iPhone viewport
         run: |
           npm install --no-save --ignore-scripts playwright-core@1.57.0
