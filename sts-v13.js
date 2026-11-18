@@ -59,11 +59,11 @@ function cue(kind){try{window.STS_SOUND_V12?.(kind)}catch(e){}}
 function activateGate(){
  if(gateStarted)return;
  gateStarted=true;curtain.classList.add('active');curtain.setAttribute('aria-hidden','false');
- portal.classList.add('sts13-launching');cue('engage');
+ portal.classList.add('sts13-launching'); // V12 already plays the entry impact sound.
  schedule(()=>{$('#sts13CurtainState').textContent='INDEX CHANNEL / ONLINE';$('#sts13CurtainCount').textContent='FACILITY INDEX / 079';curtain.classList.add('step2');cue('boot')},reduce?80:370);
  schedule(()=>{$('#sts13CurtainState').textContent='NETWORK ROUTES / SYNCHRONIZED';$('#sts13CurtainCount').textContent='TRAFFIC LINKS / 128';curtain.classList.add('step3');cue('confirm')},reduce?130:920);
  schedule(()=>{$('#sts13CurtainState').textContent='PUBLIC DIRECTORY / READY';$('#sts13CurtainCount').textContent='REFERENCE EPOCH / 2120';curtain.classList.add('releasing');cue('ready')},reduce?180:1510);
- schedule(()=>{curtain.classList.remove('active');curtain.classList.add('closed');curtain.setAttribute('aria-hidden','true');portal.classList.remove('sts13-launching')},reduce?250:2390);
+ schedule(()=>{curtain.classList.remove('active');curtain.classList.add('closed');curtain.setAttribute('aria-hidden','true');portal.classList.remove('sts13-launching')},reduce?250:1860);
 }
 main.addEventListener('click',activateGate,true);
 $$('#sts12Secondary [data-sts9-destination]').forEach(b=>b.addEventListener('click',activateGate,true));
