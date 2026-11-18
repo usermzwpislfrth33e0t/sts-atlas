@@ -145,11 +145,11 @@ jobs:
           node --check sts-entry-v12.js
           node --check sts-v13.js
           test -s sts-v13.css
-          grep -q 'sts-v13.css?v=13.0' index.html
-          grep -q 'sts-v13.js?v=13.0' index.html
+          grep -q 'sts-v13.css?v=13.1' index.html
+          grep -q 'sts-v13.js?v=13.1' index.html
           node --check sts-sound-v12.js
           test -s sts-entry-v12.css
-          grep -q 'sts-entry-v12.js?v=12.0' index.html
+          grep -q 'sts-entry-v12.js?v=12.1' index.html
           grep -q 'sts-sound-v12.js?v=12.0' index.html
           grep -q 'sts-entry-v12.css?v=12.1' index.html
           test -s sts-terminal-v9.css
