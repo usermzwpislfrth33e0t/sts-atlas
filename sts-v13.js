@@ -98,6 +98,7 @@ function select(index,withSound=true){
  const item=sections[selected];
  nodeButtons.forEach((b,i)=>{b.classList.toggle('selected',i===selected);b.setAttribute('aria-pressed',String(i===selected))});
  $('#sts13SelectedCode').textContent=String(selected+1).padStart(2,'0')+' / 06';
+ $('#sts13Inspector').dataset.index=String(selected);
  $('#sts13SelectedTitle').textContent=item.short;
  $('#sts13SelectedEnglish').textContent=item.en;
  $('#sts13SelectedDesc').textContent=item.desc;
