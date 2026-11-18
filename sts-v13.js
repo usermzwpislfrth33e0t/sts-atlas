@@ -92,7 +92,7 @@ nodeRoot.innerHTML=sections.map((item,i)=>'<button type="button" data-orbit-inde
 const nodeButtons=$$('[data-orbit-index]',shell);
 const stage=$('.sts13-orbit-stage',shell),orbitCanvas=$('#sts13OrbitCanvas',shell);
 const orbitCtx=orbitCanvas.getContext('2d',{alpha:true}),heliosCtx=field.getContext('2d',{alpha:false});
-let selected=0,frame=0,lastDraw=-100,stageIsActive=true;
+let selected=0,frame=0,lastDraw=-100,stageIsActive=true,lastOrbitW=-1,lastOrbitH=-1;
 function select(index,withSound=true){
  selected=(index+sections.length)%sections.length;
  const item=sections[selected];
@@ -213,7 +213,7 @@ function drawDirectory(t){
  const dims=canvasSize(orbitCanvas,orbitCtx);if(!dims)return;
  const {w,h}=dims,ctx=orbitCtx,cx=w*.5,cy=h*.53;
  ctx.clearRect(0,0,w,h);starfield(ctx,w,h,t,62);
- const mobile=w<640;
+ const mobile=w<640,layoutChanged=Math.abs(w-lastOrbitW)>.5||Math.abs(h-lastOrbitH)>.5;
  const rx=Math.min(w*(mobile?.37:.39),315),ry=Math.min(h*(mobile?.325:.34),230);
  ctx.save();ctx.translate(cx,cy);
  for(let i=0;i<4;i++){
@@ -235,7 +235,7 @@ function drawDirectory(t){
   // Constantly moving DOM button coordinates break touch target stability on iOS.
   const item=sections[i],angle=item.phase,vr=i%3===0?.84:i%3===1?1:.92;
   const x=cx+Math.cos(angle)*rx*vr,y=cy+Math.sin(angle)*ry*vr;
-  button.style.left=x+'px';button.style.top=y+'px';
+  if(layoutChanged){button.style.left=x+'px';button.style.top=y+'px'}
   if(i===selected){
    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(x,y);
    ctx.setLineDash([3,7]);ctx.strokeStyle='rgba(182,222,244,.48)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
@@ -247,6 +247,7 @@ function drawDirectory(t){
    ctx.beginPath();ctx.arc(x,y,33,0,Math.PI*2);ctx.stroke();
   }
  });
+ if(layoutChanged){lastOrbitW=w;lastOrbitH=h}
 }
 function loop(ms){
  if(!document.getElementById('sts13HeliosCanvas')?.isConnected)return;
