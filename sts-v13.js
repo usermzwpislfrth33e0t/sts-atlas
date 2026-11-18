@@ -131,6 +131,21 @@ let dragX=0,dragY=0,tracking=false;
 stage.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;tracking=true;dragX=e.clientX;dragY=e.clientY},{passive:true});
 stage.addEventListener('pointerup',e=>{if(!tracking)return;tracking=false;const dx=e.clientX-dragX,dy=e.clientY-dragY;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.3)select(selected+(dx<0?1:-1))},{passive:true});
 stage.addEventListener('pointercancel',()=>tracking=false);
+
+/* Enlarged touch acquisition: canvas and moving marker layers can be clicked
+   without relying exclusively on the child button hit-test. */
+stage.addEventListener('click',e=>{
+ if(e.target.closest?.('[data-orbit-index]')||e.target.closest?.('.sts13-orbit-core'))return;
+ const x=e.clientX,y=e.clientY;
+ let near=-1,dist=Infinity;
+ nodeButtons.forEach((b,i)=>{
+  const r=b.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const d=Math.hypot(cx-x,cy-y);
+  if(d<dist){dist=d;near=i}
+ });
+ if(near>=0&&dist<71){if(near===selected)openSection();else select(near)}
+});
+
 select(0,false);
 /* Drawing utilities for retina screens, keeping a strict resolution ceiling. */
 function canvasSize(c,ctx){
