@@ -231,8 +231,9 @@ function drawDirectory(t){
  ctx.beginPath();ctx.ellipse(0,0,rx*.8,ry*.8,-.08,orbitAngle,orbitAngle+.29);ctx.stroke();
  ctx.restore();
  nodeButtons.forEach((button,i)=>{
-  const item=sections[i],osc=reduce?0:Math.sin(t*.28+i*.9)*.065;
-  const angle=item.phase+osc,vr=i%3===0?.84:i%3===1?1:.92;
+  // Keep the hitbox anchored: only rings, packets and visual highlights animate.
+  // Constantly moving DOM button coordinates break touch target stability on iOS.
+  const item=sections[i],angle=item.phase,vr=i%3===0?.84:i%3===1?1:.92;
   const x=cx+Math.cos(angle)*rx*vr,y=cy+Math.sin(angle)*ry*vr;
   button.style.left=x+'px';button.style.top=y+'px';
   if(i===selected){
