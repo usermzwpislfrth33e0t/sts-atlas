@@ -87,7 +87,7 @@
 .sts13-core-pulse{inset:-22px;border:1px solid rgba(134,195,225,.1);animation:sts13-core-pulse 4s ease-in-out infinite}
 @keyframes sts13-core-turn{to{transform:rotate(360deg)}}
 @keyframes sts13-core-pulse{50%{opacity:.27;transform:scale(1.07)}}
-.sts13-orbit-nodes{position:absolute;inset:0;z-index:5;pointer-events:none}
+.sts13-orbit-nodes{position:absolute;inset:0;z-index:5;pointer-events:auto}
 .sts13-node{position:absolute;left:50%;top:50%;width:124px;min-height:65px;padding:6px 8px;transform:translate(-50%,-50%);border:0;background:transparent;color:#b3cada;cursor:pointer;pointer-events:auto;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;transition:color .22s,filter .22s;will-change:left,top}
 /* The orbital symbols drift inside stationary, reliably tappable hitboxes. */
 .sts13-node-dot{animation:sts13-node-drift 4.1s ease-in-out infinite}
