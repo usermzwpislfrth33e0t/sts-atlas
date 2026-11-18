@@ -63,12 +63,13 @@ jobs:
               });
               console.log('V13_HIT_'+width,JSON.stringify(hit));
               if(!hit.correct)throw Error('V13_HIT_TEST_MISMATCH '+JSON.stringify(hit));
-              await page.locator('#sts13Nodes [data-orbit-index="5"]').click();
+              if(width<700)await page.touchscreen.tap(hit.point[0],hit.point[1]);else await page.mouse.click(hit.point[0],hit.point[1]);
               if((await page.locator('#sts13SelectedTitle').textContent()).trim()!=='역사기록 보관소')throw Error('V13_SELECTION_FAILED');
               await page.locator('#sts13Open').click();
               await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='recordsView',{timeout:10000});
               await page.locator('#homeView').evaluate(()=>window.STS_NAVIGATE('home'));
-              await page.locator('#sts13Nodes [data-orbit-index="0"]').click();
+              const nextCenter=await page.evaluate(()=>{const b=document.querySelector('#sts13Nodes [data-orbit-index="0"]'),r=b.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]});
+              if(width<700)await page.touchscreen.tap(nextCenter[0],nextCenter[1]);else await page.mouse.click(nextCenter[0],nextCenter[1]);
               await page.locator('#sts13Open').click();
               await page.waitForFunction(()=>document.querySelector('.view.active')?.id==='atlasView',{timeout:10000});
               console.log('V13_NAV_'+width,JSON.stringify({records:true,atlas:true,errors,assets}));
